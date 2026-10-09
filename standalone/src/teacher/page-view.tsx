@@ -16,6 +16,7 @@ export function PageView({
   picking,
   picked,
   onPick,
+  badges = [],
 }: {
   doc: PDFDocumentProxy | null;
   page: PageText;
@@ -24,6 +25,8 @@ export function PageView({
   picking: boolean;
   picked: number | null;
   onPick: (sentence: number) => void;
+  // Номера заданий, уже назначенных к этой странице.
+  badges?: number[];
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -72,6 +75,7 @@ export function PageView({
       {width > 0 && (
         <div className="reader-page" style={{ width, height }} aria-label={`Страница ${index + 1}`}>
           <canvas ref={canvasRef} style={{ width, height }} />
+          <TaskBadges numbers={badges} />
           {picking &&
             page.sentences.flatMap((range, k) =>
               sentenceRects(page.lines, range).map((r, j) => (
@@ -105,7 +109,9 @@ export function TextPageView({
   picking,
   picked,
   onPick,
+  badges = [],
 }: {
+  badges?: number[];
   page: PageText;
   picking: boolean;
   picked: number | null;
@@ -141,7 +147,23 @@ export function TextPageView({
   parts.push(page.content.slice(at));
   return (
     <article className="web-text text-page" style={{ maxWidth: "none", margin: 0 }}>
+      <TaskBadges numbers={badges} />
       {parts}
     </article>
+  );
+}
+
+// Задания этой страницы — так же, как маркер увидит студент.
+function TaskBadges({ numbers }: { numbers: number[] }) {
+  if (numbers.length === 0) return null;
+  return (
+    <div className="page-badges" aria-label="Задания на этой странице">
+      {numbers.map((n) => (
+        <span key={n} className="task-marker static">
+          <span aria-hidden>?</span>
+          Задание {n}
+        </span>
+      ))}
+    </div>
   );
 }

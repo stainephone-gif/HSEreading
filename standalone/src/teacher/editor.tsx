@@ -38,6 +38,21 @@ export function Editor({
   const { project, pages, pdf } = ws;
   const setProject = (p: Partial<Project>) => onChange({ ...ws, project: { ...project, ...p } });
   const docx = project.source === "docx";
+  // Только что добавленные задания: подсвечены в списке, о них сообщение.
+  const [fresh, setFresh] = useState<{ ids: Set<string>; text: string } | null>(null);
+  const addTasks = (tasks: Project["tasks"], replace = false) => {
+    const before = new Set(project.tasks.map((t) => t.id));
+    const added = tasks.filter((t) => !before.has(t.id));
+    setProject({ tasks: replace ? tasks : [...project.tasks, ...tasks] });
+    const total = replace ? tasks.length : project.tasks.length + tasks.length;
+    setFresh({
+      ids: new Set(added.map((t) => t.id)),
+      text:
+        added.length === 1 && !replace
+          ? `Задание ${total} добавлено (${describeTask(added[0])}). Всего заданий: ${total}.`
+          : `${replace ? "Задания заменены" : "Добавлено заданий"}: ${added.length}. Всего заданий: ${total}.`,
+    });
+  };
   const doc = usePdfDoc(docx ? null : pdf);
 
   if (!pages || !pdf) return <AttachBook ws={ws} onBook={onPdf} />;
@@ -56,15 +71,31 @@ export function Editor({
       <Settings project={project} docx={docx} onChange={setProject} />
 
       <section className="stack teacher-section">
-        <h2 style={{ margin: 0 }}>Спрятанные задания</h2>
+        <h2 style={{ margin: 0 }}>
+          Спрятанные задания{project.tasks.length > 0 && <span className="muted"> · {project.tasks.length}</span>}
+        </h2>
         <p className="muted" style={{ margin: 0 }}>
           Задание открывается студенту, когда он дочитает нужную страницу: она должна пробыть в середине экрана половину
           расчётного времени чтения. Задания дают до 8 баллов поровну.
         </p>
+        {fresh && (
+          <p className="added-note" role="status">
+            ✓ {fresh.text} Не забудьте скачать ключ и читалку заново.
+          </p>
+        )}
+        {project.tasks.length === 0 && (
+          <p className="muted" style={{ margin: 0 }}>
+            Заданий пока нет: добавьте их формой ниже или загрузите из файла.
+          </p>
+        )}
         {project.tasks.length > 0 && (
           <ol className="teacher-tasks">
             {project.tasks.map((t, i) => (
-              <li key={t.id} className="row" style={{ alignItems: "baseline" }}>
+              <li
+                key={t.id}
+                className={`row${fresh?.ids.has(t.id) ? " fresh" : ""}`}
+                style={{ alignItems: "baseline" }}
+              >
                 <span>
                   {i + 1}. {t.prompt}{" "}
                   <span className="muted small">
@@ -80,6 +111,7 @@ export function Editor({
                   onClick={() => {
                     if (window.confirm("Удалить задание?")) {
                       setProject({ tasks: project.tasks.filter((x) => x.id !== t.id) });
+                      setFresh(null);
                     }
                   }}
                 >
@@ -89,16 +121,11 @@ export function Editor({
             ))}
           </ol>
         )}
-        <TaskImport project={project} pages={pages} onApply={(tasks) => setProject({ tasks })} />
+        <TaskImport project={project} pages={pages} onApply={addTasks} />
         <details open>
           <summary>Новое задание</summary>
           <div style={{ marginTop: 12 }}>
-            <TaskForm
-              project={project}
-              pages={pages}
-              doc={doc}
-              onCreate={(task) => setProject({ tasks: [...project.tasks, task] })}
-            />
+            <TaskForm project={project} pages={pages} doc={doc} onCreate={(task) => addTasks([task])} />
           </div>
         </details>
       </section>
@@ -270,6 +297,8 @@ function TaskForm({
   const [options, setOptions] = useState<ChoiceOption[]>(fresh);
   const [sentence, setSentence] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Подтверждение под кнопкой; пропадает, когда начинают новое задание.
+  const [done, setDone] = useState<string | null>(null);
   const current = pages[page - 1];
   const here = project.tasks.map((t, i) => ({ t, n: i + 1 })).filter(({ t }) => t.page === page - 1);
 
@@ -296,6 +325,7 @@ function TaskForm({
     setSentence(null);
     setOptions(fresh());
     onCreate(task);
+    setDone(`Задание ${project.tasks.length + 1} добавлено к ${describeTask(task)}.`);
   };
 
   return (
@@ -332,11 +362,17 @@ function TaskForm({
           {current.words === 0
             ? "На этой странице нет текстового слоя: задание к ней не назначить."
             : here.length
-              ? `На этой странице уже есть задания: ${here.map((x) => x.n).join(", ")}.`
+              ? `На этой странице уже есть задания: ${here.map((x) => x.n).join(", ")} (отмечены на странице).`
               : "На этой странице заданий пока нет."}
         </p>
         {project.source === "docx" ? (
-          <TextPageView page={current} picking={kind === "page-selection"} picked={sentence} onPick={setSentence} />
+          <TextPageView
+            badges={here.map((x) => x.n)}
+            page={current}
+            picking={kind === "page-selection"}
+            picked={sentence}
+            onPick={setSentence}
+          />
         ) : (
           <PageView
             doc={doc}
@@ -345,6 +381,7 @@ function TaskForm({
             picking={kind === "page-selection"}
             picked={sentence}
             onPick={setSentence}
+            badges={here.map((x) => x.n)}
           />
         )}
       </div>
@@ -404,7 +441,15 @@ function TaskForm({
 
         <label className="stack" style={{ gap: 6 }}>
           <span>Задание</span>
-          <textarea value={prompt} rows={4} maxLength={2000} onChange={(e) => setPrompt(e.target.value)} />
+          <textarea
+            value={prompt}
+            rows={4}
+            maxLength={2000}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              setDone(null);
+            }}
+          />
         </label>
 
         {kind === "page-choice" && (
@@ -477,6 +522,11 @@ function TaskForm({
             Добавить задание
           </button>
         </div>
+        {done && (
+          <p className="added-note" role="status">
+            ✓ {done} Оно появилось в списке выше и отмечено на странице.
+          </p>
+        )}
       </div>
     </div>
   );

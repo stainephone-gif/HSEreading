@@ -23,7 +23,8 @@ export function TaskImport({
 }: {
   project: Project;
   pages: PageText[];
-  onApply: (tasks: Project["tasks"]) => void;
+  // replace: заменить ими все текущие задания.
+  onApply: (tasks: Project["tasks"], replace?: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<(ImportPreview & { file: string }) | null>(null);
@@ -127,7 +128,7 @@ export function TaskImport({
                 type="button"
                 disabled={ok.length === 0}
                 onClick={() => {
-                  onApply([...project.tasks, ...ok]);
+                  onApply(ok);
                   setPreview(null);
                 }}
               >
@@ -142,7 +143,7 @@ export function TaskImport({
                     project.tasks.length === 0 ||
                     window.confirm(`Заменить все текущие задания (${project.tasks.length}) на ${ok.length} новых?`);
                   if (!sure) return;
-                  onApply(ok);
+                  onApply(ok, true);
                   setPreview(null);
                 }}
               >

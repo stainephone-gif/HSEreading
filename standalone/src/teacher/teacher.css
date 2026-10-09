@@ -72,3 +72,45 @@ blockquote.picked {
   padding: var(--spacing-18) var(--spacing-24);
   font-size: 17px;
 }
+
+/* Подтверждение: задание добавлено. */
+.added-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--color-success);
+  background: rgb(60 207 154 / 0.08);
+  font-size: 15px;
+}
+
+/* Только что добавленное задание в списке. */
+.teacher-tasks li.fresh {
+  background: rgb(255 184 41 / 0.12);
+  animation: fresh-fade 4s ease-out forwards;
+}
+
+@keyframes fresh-fade {
+  to {
+    background: transparent;
+  }
+}
+
+/* Задания страницы в конструкторе: плашки как у студента, без пульса. */
+.page-badges {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.task-marker.static {
+  position: static;
+}
+
+.text-page {
+  position: relative;
+}
