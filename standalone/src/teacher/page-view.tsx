@@ -159,7 +159,11 @@ function TaskBadges({ numbers }: { numbers: number[] }) {
   return (
     <div className="page-badges" aria-label="Задания на этой странице">
       {numbers.map((n) => (
-        <span key={n} className="task-marker static">
+        <span
+          key={n}
+          className="task-marker static"
+          title="Отметка: здесь у студента появится задание. Выполнить его можно в читалке студента."
+        >
           <span aria-hidden>?</span>
           Задание {n}
         </span>
