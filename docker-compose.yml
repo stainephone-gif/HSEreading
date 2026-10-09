@@ -1,8 +1,10 @@
-# Локальный запуск всего стека: docker compose up --build
-# Для сервера задайте APP_URL, TEACHER_EMAILS, SMTP_URL и пароль базы через .env.
+# Весь стек одной командой: docker compose up -d --build
+# Настройки — в файле .env рядом с этим файлом (образец: deploy/.env.example).
+# Пошаговая инструкция: docs/deploy.md.
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: polya
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-polya}
@@ -15,9 +17,12 @@ services:
       retries: 10
 
   pdf:
+    image: polya-pdf
     build: ./pdf-service
+    restart: unless-stopped
 
   migrate:
+    image: polya-migrate
     build:
       context: ./web
       target: migrate
@@ -28,9 +33,11 @@ services:
         condition: service_healthy
 
   web:
+    image: polya-web
     build:
       context: ./web
       target: runner
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://polya:${POSTGRES_PASSWORD:-polya}@db:5432/polya
       APP_URL: ${APP_URL:-http://localhost:3000}
@@ -42,14 +49,34 @@ services:
       STORAGE_DIR: /data
     volumes:
       - files:/data
+    # Напрямую приложение доступно только с самого сервера; снаружи — через Caddy.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
-      pdf:
-    build: ./pdf-service
-
-  migrate:
+      migrate:
         condition: service_completed_successfully
+      pdf:
+        condition: service_started
+
+  # HTTPS: Caddy сам получает сертификат Let's Encrypt для DOMAIN.
+  # Без HTTPS вход не работает: cookie сессии в рабочем режиме помечена Secure.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
 
 volumes:
   pgdata:
+  files:
+  caddy_data:
+  caddy_config:

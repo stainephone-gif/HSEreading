@@ -66,10 +66,8 @@ npm run lint && npm run typecheck && npm test && npm run build
 
 Тесты очищают таблицы, поэтому работают на отдельной базе `TEST_DATABASE_URL` (имя должно кончаться на `_test`, иначе тесты откажутся запускаться) и сами накатывают на неё миграции. Сервис разбора в тестах веб-части подменяется, запускать его не нужно.
 
-## Запуск в Docker
+## Запуск на сервере
 
-```bash
-docker compose up --build
-```
+Пошагово, вместе со сценарием пробного прогона с коллегами: [docs/deploy.md](docs/deploy.md).
 
-Для сервера задайте в `.env` рядом с `docker-compose.yml` переменные `APP_URL`, `TEACHER_EMAILS`, `SMTP_URL`, `MAIL_FROM` и `POSTGRES_PASSWORD`.
+Коротко: `cp deploy/.env.example .env`, заполнить домен, почту и пароль базы, затем `docker compose up -d --build`. Стек — база, сервис разбора PDF, приложение и Caddy, который сам получает HTTPS-сертификат.

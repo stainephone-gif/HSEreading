@@ -71,7 +71,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
             <>
               <p style={{ margin: 0 }}>Отправьте студентам ссылку. По ней они войдут и попадут в курс.</p>
               <code className="invite">
-                {env.APP_URL}/invite/{invite.code}
+                {env().APP_URL}/invite/{invite.code}
               </code>
             </>
           ) : (

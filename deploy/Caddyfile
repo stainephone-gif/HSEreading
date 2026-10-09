@@ -1,0 +1,9 @@
+# Обратный прокси с автоматическим HTTPS. Домен берётся из переменной DOMAIN.
+{$DOMAIN} {
+	encode gzip
+	# Загрузка PDF до 30 МБ плюс запас на служебные поля формы.
+	request_body {
+		max_size 35MB
+	}
+	reverse_proxy web:3000
+}

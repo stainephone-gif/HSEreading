@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AccessError } from "@/lib/courses";
+import { appUrl } from "@/lib/env";
 import { getCurrentUser } from "@/lib/session";
 import { createTextFromPdf, UploadError } from "@/lib/texts";
 
@@ -8,13 +9,10 @@ import { createTextFromPdf, UploadError } from "@/lib/texts";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = await params;
   const back = (error: string) =>
-    NextResponse.redirect(
-      new URL(`/courses/${courseId}/texts/new?error=${encodeURIComponent(error)}`, request.url),
-      303,
-    );
+    NextResponse.redirect(appUrl(`/courses/${courseId}/texts/new?error=${encodeURIComponent(error)}`), 303);
 
   const user = await getCurrentUser();
-  if (!user) return NextResponse.redirect(new URL("/login", request.url), 303);
+  if (!user) return NextResponse.redirect(appUrl("/login"), 303);
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
@@ -28,7 +26,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       fileName: file.name,
       bytes: new Uint8Array(await file.arrayBuffer()),
     });
-    return NextResponse.redirect(new URL(`/texts/${text.id}`, request.url), 303);
+    return NextResponse.redirect(appUrl(`/texts/${text.id}`), 303);
   } catch (err) {
     if (err instanceof UploadError || err instanceof AccessError) return back(err.message);
     throw err;

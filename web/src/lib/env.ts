@@ -9,11 +9,26 @@ const schema = z.object({
   MAIL_FROM: z.string().default("Поля <no-reply@localhost>"),
 });
 
-export const env = schema.parse(process.env);
+type Env = z.infer<typeof schema>;
+let cached: Env | null = null;
+
+// Проверка при первом обращении, а не при импорте: при сборке (в том числе в
+// Docker) переменных окружения ещё нет, они появляются при запуске.
+export function env(): Env {
+  cached ??= schema.parse(process.env);
+  return cached;
+}
+
+// Абсолютный адрес страницы сайта. Не из request.url: за прокси (Caddy, Docker)
+// там внутренний адрес вроде 0.0.0.0:3000.
+export function appUrl(path: string): URL {
+  return new URL(path, env().APP_URL);
+}
 
 export function teacherEmails(): Set<string> {
   return new Set(
-    env.TEACHER_EMAILS.split(",")
+    env()
+      .TEACHER_EMAILS.split(",")
       .map((e) => normalizeEmail(e))
       .filter(Boolean),
   );

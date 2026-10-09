@@ -37,7 +37,7 @@ export async function requestLoginLink(
     },
   });
 
-  const link = `${env.APP_URL}/auth/verify?token=${encodeURIComponent(token)}`;
+  const link = `${env().APP_URL}/auth/verify?token=${encodeURIComponent(token)}`;
   await sendMail(
     email,
     "Вход в «Поля»",
