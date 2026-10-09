@@ -3,12 +3,14 @@ import { notFound } from "next/navigation";
 import { unlockSeconds } from "@/lib/fragments";
 import type { FragmentLine } from "@/lib/pdf-service";
 import type { Sentence } from "@/lib/pdf-service";
+import { listKioskImports } from "@/lib/kiosk";
 import { getReadingSummary } from "@/lib/reading";
 import { listTasksForTeacher } from "@/lib/tasks";
-import { appTimeZone, dateToLocalInput } from "@/lib/time";
+import { appTimeZone, dateToLocalInput, formatDateTime } from "@/lib/time";
 import { requireUser } from "@/lib/session";
 import { getTextForTeacher } from "@/lib/texts";
 import { FragmentList, type FragmentView } from "./fragment-list";
+import { KioskImport } from "./kiosk-section";
 import { PublishButton } from "./publish-button";
 import { TaskForm } from "./task-form";
 import { TeacherTaskList } from "./task-list";
@@ -35,6 +37,7 @@ export default async function TextPage({ params }: { params: Promise<{ textId: s
   const words = body.reduce((sum, f) => sum + f.wordCount, 0);
   const published = Boolean(text.publishedAt);
   const summary = published ? await getReadingSummary(text.id, user.id) : null;
+  const kiosk = published ? await listKioskImports(text.id, user.id) : null;
   const tasks = text.status === "READY" ? await listTasksForTeacher(text.id, user.id) : [];
   const paragraphs = text.fragments
     .filter((f) => f.kind === "BODY")
@@ -96,6 +99,58 @@ export default async function TextPage({ params }: { params: Promise<{ textId: s
           <div>
             <PublishButton textId={text.id} published={published} />
           </div>
+        </section>
+      )}
+
+      {kiosk && (
+        <section className="card stack" id="kiosk">
+          <div className="row">
+            <h2 style={{ margin: 0 }}>Офлайн-читалка</h2>
+            <span className="spacer" />
+            <a href={`/texts/${text.id}/kiosk`} download>
+              Скачать HTML-файл
+            </a>
+          </div>
+          <p className="muted" style={{ margin: 0 }}>
+            Один файл с текстом и заданиями: студент открывает его в браузере без интернета и входа. Чтение и ответы
+            сохраняются в браузере; кнопкой «Сохранить отчёт» студент получает зашифрованный подписанный файл и
+            присылает его вам. Верных ответов в файле нет: ответы проверяются здесь, при загрузке отчёта. Задания,
+            добавленные после скачивания, в уже разосланный файл не попадут.
+          </p>
+          <KioskImport textId={text.id} />
+          {kiosk.reports.length > 0 && (
+            <details>
+              <summary>Загруженные отчёты: {kiosk.reports.length}</summary>
+              <div className="table-wrap" style={{ marginTop: 12 }}>
+                <table className="summary">
+                  <thead>
+                    <tr>
+                      <th>Студент</th>
+                      <th>Сохранён</th>
+                      <th>Дочитано</th>
+                      <th>Ответов</th>
+                      <th>Копия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kiosk.reports.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.user.name ?? r.user.email}</td>
+                        <td>{formatDateTime(r.savedAt)}</td>
+                        <td>{r.readCount}</td>
+                        <td>{r.answerCount}</td>
+                        <td className="muted">{r.instanceId.slice(0, 6)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="muted small">
+                «Копия» — браузер, в котором читал студент. Разные копии у одного студента — чтение на разных
+                устройствах: засчитывается лучшее по каждому абзацу.
+              </p>
+            </details>
+          )}
         </section>
       )}
 

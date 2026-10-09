@@ -1,5 +1,6 @@
 "use client";
 
+import type { DocumentInitParameters } from "pdfjs-dist/types/src/display/api";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { sentenceRects } from "@/lib/geometry";
@@ -17,6 +18,16 @@ const MAX_PAGE_WIDTH = 900;
 // Legacy-сборка PDF.js: обычная требует новейших методов JS (Map.getOrInsertComputed),
 // которых нет в Safari и не самых свежих Chrome.
 const loadPdfjs = () => import("pdfjs-dist/legacy/build/pdf.mjs");
+
+// Откуда читалка берёт PDF и куда отчитывается. В приложении это сервер, в
+// офлайн-читалке (киоске) — локальное состояние в браузере.
+export type DwellResponse = { readIds?: string[]; tasks?: StudentTasks };
+export type ReaderBackend = {
+  pdf: () => DocumentInitParameters;
+  // beacon: страница закрывается, ответ не нужен.
+  beat: (claims: Record<string, number>, beacon: boolean) => Promise<DwellResponse | null>;
+  submit: (taskId: string, value: unknown) => Promise<{ error?: string; tasks?: StudentTasks }>;
+};
 
 type Marker = { taskId: string; isNew: boolean };
 type SelectionOverlay = {
@@ -52,12 +63,13 @@ function useDefaultView(displayMode: ReaderData["displayMode"]): View | null {
 
 export function Reader({
   data,
-  pdfUrl,
   deadlineLabel,
+  backend,
 }: {
   data: ReaderData;
-  pdfUrl: string;
   deadlineLabel: string | null;
+  // Должен быть один и тот же на всё время жизни читалки.
+  backend: ReaderBackend;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -69,7 +81,7 @@ export function Reader({
   const [selectedSentence, setSelectedSentence] = useState<number | null>(null);
   // Задания, которые студент уже видел: новые маркеры мигают.
   const [seen, setSeen] = useState(() => new Set(data.tasks?.found.map((t) => t.id) ?? []));
-  const zone = useReadingZone(data, (body) => body.tasks && setTasks(body.tasks));
+  const zone = useReadingZone(data, backend, (body) => body.tasks && setTasks(body.tasks));
   const defaultView = useDefaultView(data.displayMode);
   const [chosenView, setChosenView] = useState<View | null>(null);
   const view = chosenView ?? defaultView;
@@ -136,7 +148,7 @@ export function Reader({
       const pdfjs = await loadPdfjs();
       if (cancelled) return;
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
-      loading = pdfjs.getDocument({ url: pdfUrl });
+      loading = pdfjs.getDocument(backend.pdf());
       const loaded = await loading.promise;
       if (!cancelled) setDoc(loaded);
     })().catch((err) => {
@@ -149,7 +161,7 @@ export function Reader({
       loading?.destroy();
       setDoc(null);
     };
-  }, [pdfUrl, view]);
+  }, [backend, view]);
 
   return (
     <div ref={containerRef} className="reader">
@@ -170,9 +182,10 @@ export function Reader({
       {tasks && openStudentTask && (
         <TaskPanel
           key={openStudentTask.id}
-          textId={data.textId}
           task={openStudentTask}
+          onSubmit={backend.submit}
           closed={tasks.closed}
+          gradesPending={tasks.gradesPending}
           selectedSentence={selectedSentence}
           onTasks={setTasks}
           onClose={() => setPanel(null)}
@@ -481,9 +494,7 @@ function ZoneShade() {
 }
 
 // Учёт времени: какие абзацы сейчас в зоне чтения и сколько они там пробыли.
-type DwellResponse = { readIds?: string[]; tasks?: StudentTasks };
-
-function useReadingZone(data: ReaderData, onResponse: (body: DwellResponse) => void) {
+function useReadingZone(data: ReaderData, backend: ReaderBackend, onResponse: (body: DwellResponse) => void) {
   // Колбэк в ref: эффект отчётов не перезапускается при каждом рендере.
   const onResponseRef = useRef(onResponse);
   useEffect(() => {
@@ -535,21 +546,15 @@ function useReadingZone(data: ReaderData, onResponse: (body: DwellResponse) => v
   useEffect(() => () => observerRef.current?.disconnect(), []);
 
   useEffect(() => {
-    const url = `/texts/${data.textId}/dwell`;
     const thresholds = new Map(data.fragments.map((f) => [f.id, f.thresholdMs]));
 
     const flush = (beacon = false) => {
       const claims = pending.current;
       pending.current = {};
       if (data.preview) return;
-      const payload = JSON.stringify({ claims });
-      if (beacon && navigator.sendBeacon) {
-        navigator.sendBeacon(url, new Blob([payload], { type: "text/plain" }));
-        return;
-      }
-      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((body: DwellResponse | null) => {
+      backend
+        .beat(claims, beacon)
+        .then((body) => {
           if (!body?.readIds) return;
           readRef.current = new Set(body.readIds);
           setReadIds(readRef.current);
@@ -603,7 +608,7 @@ function useReadingZone(data: ReaderData, onResponse: (body: DwellResponse) => v
       window.removeEventListener("pagehide", onHide);
       flush(true);
     };
-  }, [data]);
+  }, [data, backend]);
 
   return { observe, dwellMs, readIds };
 }
