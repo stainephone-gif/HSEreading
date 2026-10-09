@@ -28,6 +28,7 @@ web/                 приложение на Next.js (App Router, TypeScript)
   src/app/           страницы и server actions
   src/kiosk/         офлайн-читалка: собирается в kiosk-dist/ (npm run build:kiosk)
   tests/             тесты Vitest (часть идёт на настоящей базе)
+standalone/          автономная читалка: конструктор в одном HTML-файле, без сервера (см. standalone/README.md)
 pdf-service/         разбор PDF на абзацы и предложения (Python, FastAPI, PyMuPDF)
   app/extract.py     правила деления на абзацы
   tests/             тесты pytest на сгенерированных PDF

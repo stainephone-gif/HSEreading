@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { formatPoints, TASK_POINTS, taskPoints } from "@/lib/scoring";
-import type { StudentTask, StudentTasks } from "@/lib/tasks";
+import type { StudentTask, StudentTasks } from "@/lib/reader-types";
 
 const FORMAT_HINT = {
   CHOICE: "Выберите вариант",

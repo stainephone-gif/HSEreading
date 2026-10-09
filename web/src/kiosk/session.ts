@@ -5,6 +5,7 @@
 import { fromBase64, type KioskKeys, openLocal, parseReportFile, sealLocal, sealReport } from "@/lib/kiosk-crypto";
 import {
   applyBeat,
+  fillPlacements,
   type KioskData,
   type KioskState,
   type KioskStudent,
@@ -13,8 +14,7 @@ import {
   studentTasks,
   submitAnswer,
 } from "@/lib/kiosk-engine";
-import type { ReaderData } from "@/lib/reading";
-import type { StudentTasks } from "@/lib/tasks";
+import type { ReaderData, StudentTasks } from "@/lib/reader-types";
 
 // Имя файла отчёта только латиницей: с кириллицей и даже с тире часть
 // браузеров сохраняет файл под именем «download».
@@ -24,13 +24,18 @@ const TRANSLIT: Record<string, string> = Object.fromEntries(
     .map((pair) => pair.split(":")),
 );
 
-export function reportFileName(name: string, at: Date): string {
-  const latin = [...name.toLowerCase()]
+export function latinSlug(text: string, max = 60): string {
+  return [...text.toLowerCase()]
     .map((c) => TRANSLIT[c] ?? c)
     .join("")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 60);
+    .slice(0, max)
+    .replace(/-$/, "");
+}
+
+export function reportFileName(name: string, at: Date): string {
+  const latin = latinSlug(name);
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}-${pad(at.getHours())}${pad(at.getMinutes())}`;
   return `polya-${latin || "report"}-${stamp}.polya`;
@@ -53,7 +58,9 @@ export class KioskStore {
     if (!json) return null;
     try {
       const state = JSON.parse(json) as Stored;
-      return state?.exportId === this.data.exportId ? state : null;
+      if (state?.exportId !== this.data.exportId) return null;
+      fillPlacements(state, this.data);
+      return state;
     } catch {
       return null;
     }
