@@ -203,6 +203,18 @@ export function Reader({
   const leftBehindId = useLeftBehind(unanswered, skipReminder);
   const leftBehind = panel === "list" ? null : (unanswered.find((t) => t.id === leftBehindId) ?? null);
 
+  // Пролистанные слишком быстро места со спрятанными заданиями: задание там
+  // ещё не открылось, и студент должен об этом узнать.
+  const skippable = useMemo(() => {
+    const found = new Set(tasks?.found.map((t) => t.fragmentId));
+    return [...new Set(data.taskFragments ?? [])]
+      .filter((fid) => !zone.readIds.has(fid) && !found.has(fid))
+      .map((fid) => ({ id: `skip:${fid}`, fragmentId: fid }));
+  }, [data.taskFragments, zone.readIds, tasks]);
+  const skippedId = useLeftBehind(skippable, snoozed);
+  const skipped = leftBehind || panel ? null : (skippable.find((x) => x.id === skippedId) ?? null);
+  const skippedPage = skipped ? (data.fragments.find((f) => f.id === skipped.fragmentId)?.lines[0]?.page ?? -1) + 1 : 0;
+
   const openStudentTask = tasks?.found.find((t) => t.id === panel) ?? null;
 
   // Задание на выбор предложения: абзац прокручивается наверх, чтобы его не
@@ -290,6 +302,35 @@ export function Reader({
               type="button"
               className="link small"
               onClick={() => setSnoozed((prev) => new Set([...prev, leftBehind.id]))}
+            >
+              Позже
+            </button>
+          </span>
+        </div>
+      )}
+      {skipped && (
+        <div className="task-reminder" role="status">
+          <span className="task-reminder-text">
+            <b>Вы пропустили задание.</b>{" "}
+            {skippedPage > 0 ? `Страница ${skippedPage} пролистана` : "Это место пролистано"} слишком быстро, а на ней
+            спрятано задание. Вернитесь и дочитайте её — задание откроется.
+          </span>
+          <span className="row" style={{ gap: 8 }}>
+            <button
+              type="button"
+              className="small"
+              onClick={() =>
+                document
+                  .querySelector(`[data-fid="${CSS.escape(skipped.fragmentId)}"]`)
+                  ?.scrollIntoView({ block: "center", behavior: "smooth" })
+              }
+            >
+              Вернуться к странице
+            </button>
+            <button
+              type="button"
+              className="link small"
+              onClick={() => setSnoozed((prev) => new Set([...prev, skipped.id]))}
             >
               Позже
             </button>
