@@ -20,27 +20,6 @@
   border-bottom: none;
 }
 
-.sentence-options {
-  max-height: 280px;
-  overflow-y: auto;
-  border: 1px solid var(--hairline);
-  padding: 8px 12px;
-}
-
-.sentence-options label {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  font-size: 15px;
-  padding: 4px 0;
-}
-
-.page-preview {
-  font-size: 14px;
-  color: var(--color-silver-mist);
-  max-height: 120px;
-  overflow: hidden;
-}
 
 .answer-list {
   list-style: none;
@@ -51,4 +30,38 @@
 .answer-list li {
   padding: 10px 0;
   border-bottom: 1px solid var(--hairline);
+}
+
+/* Новое задание: страница слева, форма справа (на узком экране — друг под другом). */
+.task-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: var(--spacing-30);
+  align-items: start;
+}
+
+.task-editor-form {
+  position: sticky;
+  top: var(--spacing-12);
+}
+
+@media (max-width: 900px) {
+  .task-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-editor-form {
+    position: static;
+  }
+}
+
+.page-nav input[type="number"] {
+  width: 80px;
+}
+
+blockquote.picked {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-saffron-spark);
+  font-size: 15px;
 }

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { useEffect, useState } from "react";
 import { unlockSeconds } from "@/lib/fragments";
 import {
   buildKioskData,
@@ -14,7 +15,8 @@ import {
 } from "~/project";
 import type { PageText } from "~/pages";
 import { attachPdf, type Workspace } from "./app";
-import { download, fromLocalInput, ownBundle, toLocalInput } from "./files";
+import { download, fromLocalInput, openPdf, ownBundle, toLocalInput } from "./files";
+import { PageView } from "./page-view";
 
 const FORMAT_LABEL = { CHOICE: "выбор варианта", SELECTION: "выделить предложение", SHORT: "короткий ответ" } as const;
 
@@ -33,6 +35,7 @@ export function Editor({
 }) {
   const { project, pages, pdf } = ws;
   const setProject = (p: Partial<Project>) => onChange({ ...ws, project: { ...project, ...p } });
+  const doc = usePdfDoc(pdf);
 
   if (!pages || !pdf) return <AttachPdf ws={ws} onPdf={onPdf} />;
 
@@ -82,12 +85,13 @@ export function Editor({
             ))}
           </ol>
         )}
-        <details>
+        <details open>
           <summary>Новое задание</summary>
           <div style={{ marginTop: 12 }}>
             <TaskForm
               project={project}
               pages={pages}
+              doc={doc}
               onCreate={(task) => setProject({ tasks: [...project.tasks, task] })}
             />
           </div>
@@ -97,6 +101,29 @@ export function Editor({
       <Downloads project={project} pages={pages} pdf={pdf} dirty={dirty} onSaved={onSaved} />
     </div>
   );
+}
+
+// Открытый PDF для показа страниц; закрывается, когда редактор уходит с экрана.
+function usePdfDoc(pdf: Uint8Array | null): PDFDocumentProxy | null {
+  const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
+  useEffect(() => {
+    if (!pdf) return;
+    let close: (() => Promise<void>) | null = null;
+    let cancelled = false;
+    openPdf(pdf)
+      .then((opened) => {
+        close = opened.close;
+        if (cancelled) opened.close();
+        else setDoc(opened.doc);
+      })
+      .catch((err) => console.error(err));
+    return () => {
+      cancelled = true;
+      close?.();
+      setDoc(null);
+    };
+  }, [pdf]);
+  return doc;
 }
 
 function compactPages(nums: number[]): string {
@@ -200,27 +227,42 @@ function Settings({ project, onChange }: { project: Project; onChange: (p: Parti
 
 type Kind = TaskInput["kind"];
 
+const fresh = (): ChoiceOption[] => [
+  { text: "", correct: true },
+  { text: "", correct: false },
+];
+
+// Задание назначается к странице, которая открыта слева: её видно так же, как
+// увидит студент.
 function TaskForm({
   project,
   pages,
+  doc,
   onCreate,
 }: {
   project: Project;
   pages: PageText[];
+  doc: PDFDocumentProxy | null;
   onCreate: (t: Project["tasks"][number]) => void;
 }) {
   const [kind, setKind] = useState<Kind>("page-choice");
   const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   const [pageFrom, setPageFrom] = useState(1);
   const [pageTo, setPageTo] = useState(pages.length);
   const [prompt, setPrompt] = useState("");
-  const [options, setOptions] = useState<ChoiceOption[]>([
-    { text: "", correct: true },
-    { text: "", correct: false },
-  ]);
+  const [options, setOptions] = useState<ChoiceOption[]>(fresh);
   const [sentence, setSentence] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const current = pages[page - 1];
+  const here = project.tasks.map((t, i) => ({ t, n: i + 1 })).filter(({ t }) => t.page === page - 1);
+
+  const go = (n: number) => {
+    const next = Math.min(pages.length, Math.max(1, Math.round(n) || 1));
+    setPage(next);
+    setPageInput(String(next));
+    setSentence(null);
+  };
 
   const submit = () => {
     const input: TaskInput =
@@ -236,151 +278,185 @@ function TaskForm({
     setError(null);
     setPrompt("");
     setSentence(null);
-    setOptions([
-      { text: "", correct: true },
-      { text: "", correct: false },
-    ]);
+    setOptions(fresh());
     onCreate(task);
   };
 
   return (
-    <div className="stack" style={{ gap: 12 }}>
-      <label className="stack" style={{ gap: 6 }}>
-        <span>Тип</span>
-        <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-          <option value="page-choice">На странице: выбор варианта</option>
-          <option value="page-selection">На странице: выделить предложение</option>
-          <option value="page-short">На странице: короткий ответ</option>
-          <option value="scattered">Раскидать по страницам: у каждого студента своя (короткий ответ)</option>
-        </select>
-      </label>
-
-      {kind === "scattered" ? (
-        <div className="row">
-          <label className="stack" style={{ gap: 6 }}>
-            <span>Со страницы</span>
+    <div className="task-editor">
+      <div className="stack" style={{ gap: 12 }}>
+        <div className="row page-nav">
+          <button type="button" className="secondary small" onClick={() => go(page - 1)} disabled={page <= 1}>
+            ‹ Назад
+          </button>
+          <span className="row" style={{ gap: 6 }}>
+            Страница
             <input
               type="number"
               min={1}
               max={pages.length}
-              value={pageFrom}
-              onChange={(e) => setPageFrom(Number(e.target.value))}
+              value={pageInput}
+              aria-label="Номер страницы"
+              onChange={(e) => setPageInput(e.target.value)}
+              onBlur={() => go(Number(pageInput))}
+              onKeyDown={(e) => e.key === "Enter" && go(Number(pageInput))}
             />
-          </label>
-          <label className="stack" style={{ gap: 6 }}>
-            <span>По страницу</span>
-            <input
-              type="number"
-              min={1}
-              max={pages.length}
-              value={pageTo}
-              onChange={(e) => setPageTo(Number(e.target.value))}
-            />
-          </label>
+            из {pages.length}
+          </span>
+          <button
+            type="button"
+            className="secondary small"
+            onClick={() => go(page + 1)}
+            disabled={page >= pages.length}
+          >
+            Вперёд ›
+          </button>
         </div>
-      ) : (
-        <>
-          <label className="stack" style={{ gap: 6 }}>
-            <span>Страница (1–{pages.length})</span>
-            <input
-              type="number"
-              min={1}
-              max={pages.length}
-              value={page}
-              onChange={(e) => {
-                setPage(Math.min(pages.length, Math.max(1, Number(e.target.value) || 1)));
-                setSentence(null);
-              }}
-            />
-          </label>
-          {kind !== "page-selection" && (
-            <p className="page-preview" style={{ margin: 0 }}>
-              {current?.content ? `${current.content.slice(0, 300)}…` : "На этой странице нет текста."}
+        <p className="muted small" style={{ margin: 0 }}>
+          {current.words === 0
+            ? "На этой странице нет текстового слоя: задание к ней не назначить."
+            : here.length
+              ? `На этой странице уже есть задания: ${here.map((x) => x.n).join(", ")}.`
+              : "На этой странице заданий пока нет."}
+        </p>
+        <PageView
+          doc={doc}
+          page={current}
+          index={page - 1}
+          picking={kind === "page-selection"}
+          picked={sentence}
+          onPick={setSentence}
+        />
+      </div>
+
+      <div className="stack task-editor-form" style={{ gap: 12 }}>
+        <label className="stack" style={{ gap: 6 }}>
+          <span>Тип</span>
+          <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
+            <option value="page-choice">Выбор варианта</option>
+            <option value="page-selection">Выделить предложение</option>
+            <option value="page-short">Короткий ответ</option>
+            <option value="scattered">Раскидать по страницам (короткий ответ)</option>
+          </select>
+        </label>
+
+        {kind === "scattered" ? (
+          <div className="stack" style={{ gap: 6 }}>
+            <p className="muted small" style={{ margin: 0 }}>
+              У каждого студента задание окажется на своей странице из диапазона.
             </p>
-          )}
-        </>
-      )}
+            <div className="row">
+              <label className="stack" style={{ gap: 6 }}>
+                <span>Со страницы</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={pages.length}
+                  value={pageFrom}
+                  onChange={(e) => setPageFrom(Number(e.target.value))}
+                />
+              </label>
+              <label className="stack" style={{ gap: 6 }}>
+                <span>По страницу</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={pages.length}
+                  value={pageTo}
+                  onChange={(e) => setPageTo(Number(e.target.value))}
+                />
+              </label>
+            </div>
+            <div className="row">
+              <button type="button" className="link small" onClick={() => setPageFrom(page)}>
+                Начало — эта страница
+              </button>
+              <button type="button" className="link small" onClick={() => setPageTo(page)}>
+                Конец — эта страница
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0 }}>
+            К странице <b>{page}</b>
+          </p>
+        )}
 
-      <label className="stack" style={{ gap: 6 }}>
-        <span>Задание</span>
-        <textarea value={prompt} rows={3} maxLength={2000} onChange={(e) => setPrompt(e.target.value)} />
-      </label>
+        <label className="stack" style={{ gap: 6 }}>
+          <span>Задание</span>
+          <textarea value={prompt} rows={4} maxLength={2000} onChange={(e) => setPrompt(e.target.value)} />
+        </label>
 
-      {kind === "page-choice" && (
-        <div className="stack" style={{ gap: 6 }}>
-          {options.map((o, i) => (
-            <div key={i} className="row">
-              <input
-                type="radio"
-                name="correct"
-                checked={o.correct}
-                onChange={() => setOptions(options.map((x, k) => ({ ...x, correct: k === i })))}
-                aria-label="Верный вариант"
-              />
-              <input
-                type="text"
-                value={o.text}
-                placeholder={`Вариант ${i + 1}`}
-                maxLength={500}
-                onChange={(e) => setOptions(options.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)))}
-              />
-              {options.length > 2 && (
+        {kind === "page-choice" && (
+          <div className="stack" style={{ gap: 6 }}>
+            {options.map((o, i) => (
+              <div key={i} className="row" style={{ flexWrap: "nowrap" }}>
+                <input
+                  type="radio"
+                  name="correct"
+                  checked={o.correct}
+                  onChange={() => setOptions(options.map((x, k) => ({ ...x, correct: k === i })))}
+                  aria-label="Верный вариант"
+                />
+                <input
+                  type="text"
+                  value={o.text}
+                  placeholder={`Вариант ${i + 1}`}
+                  maxLength={500}
+                  onChange={(e) => setOptions(options.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)))}
+                />
+                {options.length > 2 && (
+                  <button
+                    type="button"
+                    className="link small"
+                    aria-label="Убрать вариант"
+                    onClick={() => {
+                      const next = options.filter((_, k) => k !== i);
+                      if (!next.some((x) => x.correct)) next[0].correct = true;
+                      setOptions(next);
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            {options.length < 6 && (
+              <div>
                 <button
                   type="button"
                   className="link small"
-                  onClick={() => {
-                    const next = options.filter((_, k) => k !== i);
-                    if (!next.some((x) => x.correct)) next[0].correct = true;
-                    setOptions(next);
-                  }}
+                  onClick={() => setOptions([...options, { text: "", correct: false }])}
                 >
-                  убрать
+                  + вариант
                 </button>
-              )}
-            </div>
-          ))}
-          {options.length < 6 && (
-            <div>
-              <button
-                type="button"
-                className="link small"
-                onClick={() => setOptions([...options, { text: "", correct: false }])}
-              >
-                + вариант
-              </button>
-            </div>
-          )}
-          <p className="muted small" style={{ margin: 0 }}>
-            Отметьте верный вариант кружком слева.
-          </p>
-        </div>
-      )}
+              </div>
+            )}
+            <p className="muted small" style={{ margin: 0 }}>
+              Отметьте верный вариант кружком слева.
+            </p>
+          </div>
+        )}
 
-      {kind === "page-selection" && (
-        <div className="stack" style={{ gap: 6 }}>
-          <span className="muted small">
-            Эталонное предложение: засчитается выделение, совпадающее с ним больше чем наполовину.
-          </span>
-          {current?.sentences.length ? (
-            <div className="sentence-options">
-              {current.sentences.map(([s, e], i) => (
-                <label key={i}>
-                  <input type="radio" name="sentence" checked={sentence === i} onChange={() => setSentence(i)} />
-                  {current.content.slice(s, e)}
-                </label>
-              ))}
-            </div>
-          ) : (
-            <p className="muted">На этой странице нет текста.</p>
-          )}
-        </div>
-      )}
+        {kind === "page-selection" && (
+          <div className="stack" style={{ gap: 6 }}>
+            {sentence !== null ? (
+              <blockquote className="picked">{current.content.slice(...current.sentences[sentence])}</blockquote>
+            ) : (
+              <p className="muted small" style={{ margin: 0 }}>
+                Щёлкните на странице эталонное предложение: засчитается выделение, совпадающее с ним больше чем
+                наполовину.
+              </p>
+            )}
+          </div>
+        )}
 
-      {error && <p className="error">{error}</p>}
-      <div>
-        <button type="button" className="secondary" onClick={submit} disabled={!prompt.trim()}>
-          Добавить задание
-        </button>
+        {error && <p className="error">{error}</p>}
+        <div>
+          <button type="button" onClick={submit} disabled={!prompt.trim()}>
+            Добавить задание
+          </button>
+        </div>
       </div>
     </div>
   );

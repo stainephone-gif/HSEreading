@@ -1,0 +1,99 @@
+// Страница PDF в конструкторе: преподаватель видит её как студент и назначает
+// задание к ней. Для задания «выделите предложение» предложения подсвечены
+// поверх страницы и выбираются щелчком.
+
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { useEffect, useRef, useState } from "react";
+import { sentenceRects } from "@/lib/geometry";
+import type { PageText } from "~/pages";
+
+const MAX_WIDTH = 720;
+
+export function PageView({
+  doc,
+  page,
+  index,
+  picking,
+  picked,
+  onPick,
+}: {
+  doc: PDFDocumentProxy | null;
+  page: PageText;
+  index: number;
+  // Показывать предложения для выбора.
+  picking: boolean;
+  picked: number | null;
+  onPick: (sentence: number) => void;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [width, setWidth] = useState(0);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWidth(Math.min(MAX_WIDTH, Math.floor(e.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const scale = width / page.width;
+
+  useEffect(() => {
+    if (!doc || width === 0) return;
+    let task: RenderTask | null = null;
+    let cancelled = false;
+    (async () => {
+      const p = await doc.getPage(index + 1);
+      if (cancelled) return;
+      const viewport = p.getViewport({ scale });
+      const canvas = canvasRef.current!;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      task = p.render({ canvas, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined });
+      await task.promise;
+      if (!cancelled) setError(false);
+    })().catch((err) => {
+      if (err?.name === "RenderingCancelledException") return;
+      console.error(err);
+      setError(true);
+    });
+    return () => {
+      cancelled = true;
+      task?.cancel();
+    };
+  }, [doc, index, scale, width]);
+
+  const height = Math.round(page.height * scale);
+  return (
+    <div ref={boxRef} style={{ width: "100%" }}>
+      {width > 0 && (
+        <div className="reader-page" style={{ width, height }} aria-label={`Страница ${index + 1}`}>
+          <canvas ref={canvasRef} style={{ width, height }} />
+          {picking &&
+            page.sentences.flatMap((range, k) =>
+              sentenceRects(page.lines, range).map((r, j) => (
+                <button
+                  key={`${k}:${j}`}
+                  type="button"
+                  className={`sentence-pick${picked === k ? " picked" : ""}`}
+                  style={{
+                    left: r.x0 * scale,
+                    top: r.y0 * scale,
+                    width: (r.x1 - r.x0) * scale,
+                    height: (r.y1 - r.y0) * scale,
+                  }}
+                  onClick={() => onPick(k)}
+                  aria-label={`Предложение ${k + 1}`}
+                  title={page.content.slice(...range)}
+                />
+              )),
+            )}
+        </div>
+      )}
+      {error && <p className="error small">Не удалось показать страницу.</p>}
+    </div>
+  );
+}
