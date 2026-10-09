@@ -46,10 +46,10 @@ services:
       - "3000:3000"
     depends_on:
       pdf:
-    build: ./pdf-service
-
-  migrate:
+        condition: service_started
+      migrate:
         condition: service_completed_successfully
 
 volumes:
   pgdata:
+  files:
