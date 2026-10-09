@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { deleteSession, findUserBySessionToken } from "./auth";
+import { env } from "./env";
 
 const COOKIE_NAME = "polya_session";
 
@@ -10,7 +11,8 @@ export async function setSessionCookie(token: string, expiresAt: Date): Promise<
   (await cookies()).set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // По HTTPS cookie защищена. Сайт по http:// (тест в локальной сети) иначе не смог бы её сохранить.
+    secure: env().APP_URL.startsWith("https://"),
     path: "/",
     expires: expiresAt,
   });
