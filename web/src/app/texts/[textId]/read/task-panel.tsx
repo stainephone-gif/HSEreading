@@ -12,18 +12,43 @@ const FORMAT_HINT = {
 
 export function TaskBar({
   tasks,
+  unanswered = 0,
   deadlineLabel,
   onOpenList,
+  onSummary,
+  children,
 }: {
   tasks: StudentTasks;
+  // Открытые задания без ответа.
+  unanswered?: number;
   deadlineLabel: string | null;
   onOpenList: () => void;
+  // Итоги и подсказки: появляются, когда студент дочитал до конца.
+  onSummary?: () => void;
+  // Карта чтения под строкой заданий.
+  children?: React.ReactNode;
 }) {
+  const share = tasks.total ? tasks.found.length / tasks.total : 0;
   return (
     <div className="task-bar">
       <button type="button" className="link" onClick={onOpenList} disabled={tasks.found.length === 0}>
         Найдено заданий: {tasks.found.length} из {tasks.total}
       </button>
+      {tasks.total > 0 && (
+        <span className="found-progress" aria-hidden>
+          <span style={{ width: `${share * 100}%` }} />
+        </span>
+      )}
+      {onSummary && (
+        <button type="button" className="link small" onClick={onSummary}>
+          Итоги и подсказки
+        </button>
+      )}
+      {unanswered > 0 && (
+        <button type="button" className="task-bar-attention" onClick={onOpenList}>
+          Без ответа: {unanswered}
+        </button>
+      )}
       {deadlineLabel && <span className="muted small">{deadlineLabel}</span>}
       {tasks.closed && tasks.total > 0 && !tasks.gradesPending && (
         <span className="small">
@@ -31,6 +56,7 @@ export function TaskBar({
           {formatPoints(taskPoints(tasks.found.filter((t) => t.grade === "PASS").length, tasks.total))} из {TASK_POINTS}
         </span>
       )}
+      {children}
     </div>
   );
 }
@@ -59,7 +85,11 @@ export function TaskList({
             <button type="button" className="link" onClick={() => onOpen(t.id)}>
               {t.prompt.length > 80 ? `${t.prompt.slice(0, 80)}…` : t.prompt}
             </button>{" "}
-            <span className="muted small">{t.answer ? "· ответ сохранён" : "· без ответа"}</span>
+            {t.answer ? (
+              <span className="muted small">· ответ сохранён</span>
+            ) : (
+              <span className="small attention-text">· без ответа</span>
+            )}
           </li>
         ))}
       </ol>

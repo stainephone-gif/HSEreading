@@ -178,6 +178,9 @@ export class KioskSession {
       readIds: readIds(this.state),
       tasks: this.tasks(),
       previewTasks: [],
+      taskFragments: data.tasks
+        .map((t) => t.fragmentId ?? this.state.placements[t.id])
+        .filter((id): id is string => Boolean(id)),
     };
   }
 

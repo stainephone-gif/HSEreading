@@ -20,28 +20,6 @@
   border-bottom: none;
 }
 
-.sentence-options {
-  max-height: 280px;
-  overflow-y: auto;
-  border: 1px solid var(--hairline);
-  padding: 8px 12px;
-}
-
-.sentence-options label {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  font-size: 15px;
-  padding: 4px 0;
-}
-
-.page-preview {
-  font-size: 14px;
-  color: var(--color-silver-mist);
-  max-height: 120px;
-  overflow: hidden;
-}
-
 .answer-list {
   list-style: none;
   padding: 0;
@@ -51,4 +29,134 @@
 .answer-list li {
   padding: 10px 0;
   border-bottom: 1px solid var(--hairline);
+}
+
+/* Новое задание: страница слева, форма справа (на узком экране — друг под другом). */
+.task-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: var(--spacing-30);
+  align-items: start;
+}
+
+.task-editor-form {
+  position: sticky;
+  top: var(--spacing-12);
+}
+
+@media (max-width: 900px) {
+  .task-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-editor-form {
+    position: static;
+  }
+}
+
+.page-nav input[type="number"] {
+  width: 80px;
+}
+
+blockquote.picked {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-saffron-spark);
+  font-size: 15px;
+}
+
+/* Страница DOCX в конструкторе: абзацы разделены переводом строки. */
+.text-page {
+  white-space: pre-line;
+  border: 1px solid var(--hairline);
+  padding: var(--spacing-18) var(--spacing-24);
+  font-size: 17px;
+}
+
+/* Подтверждение: задание добавлено. */
+.added-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--color-success);
+  background: rgb(60 207 154 / 0.08);
+  font-size: 15px;
+}
+
+/* Только что добавленное задание в списке. */
+.teacher-tasks li.fresh {
+  background: rgb(255 184 41 / 0.12);
+  animation: fresh-fade 4s ease-out forwards;
+}
+
+@keyframes fresh-fade {
+  to {
+    background: transparent;
+  }
+}
+
+/* Задания страницы в конструкторе: плашки как у студента, без пульса. */
+.page-badges {
+  position: absolute;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.task-marker.static {
+  position: static;
+}
+
+.text-page {
+  position: relative;
+}
+
+/* Выбор типа задания: вариант с пояснением. */
+.field-caption {
+  padding: 0;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ash-gray);
+}
+
+.kind-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kind-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.kind-option.active {
+  border-color: var(--color-electric-iris);
+  background: rgb(128 82 255 / 0.1);
+}
+
+.kind-option input {
+  margin-top: 4px;
+}
+
+.kind-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+}
+
+.kind-text b {
+  font-weight: 500;
 }
