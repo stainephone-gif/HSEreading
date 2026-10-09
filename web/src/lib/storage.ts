@@ -3,12 +3,14 @@ import path from "node:path";
 
 // Файлы на локальном диске (в Docker это том). Интерфейс узкий, чтобы потом
 // заменить на S3-совместимое хранилище без правок в остальном коде.
+// turbopackIgnore: путь известен только при запуске, иначе сборщик тащит в
+// standalone-сборку весь проект.
 function root(): string {
-  return path.resolve(process.env.STORAGE_DIR ?? "./storage");
+  return path.resolve(/* turbopackIgnore: true */ process.env.STORAGE_DIR ?? "./storage");
 }
 
 function resolveKey(key: string): string {
-  const full = path.resolve(root(), key);
+  const full = path.resolve(/* turbopackIgnore: true */ root(), key);
   if (!full.startsWith(root() + path.sep)) throw new Error(`Недопустимый ключ файла: ${key}`);
   return full;
 }

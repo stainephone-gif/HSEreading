@@ -2,10 +2,10 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { AccessError, acceptInvite, createCourse, getCourseForMember } from "@/lib/courses";
+import { AccessError } from "@/lib/courses";
 import { db } from "@/lib/db";
 import * as pdfService from "@/lib/pdf-service";
-import { ExtractFailure, type ExtractResult } from "@/lib/pdf-service";
+import { ExtractFailure } from "@/lib/pdf-service";
 import {
   createTextFromPdf,
   getTextForTeacher,
@@ -14,74 +14,13 @@ import {
   mergeWithNext,
   reparseText,
   setFragmentKind,
+  setPublished,
   splitAtSentence,
   updateTextSettings,
   UploadError,
 } from "@/lib/texts";
 import { resetDb } from "./helpers";
-
-const PDF = new TextEncoder().encode("%PDF-1.7 fake");
-
-// Абзац, разорванный страницей: между половинами стоят колонтитул и номер страницы.
-const EXTRACTED: ExtractResult = {
-  pageCount: 2,
-  pages: [
-    { width: 595, height: 842 },
-    { width: 595, height: 842 },
-  ],
-  language: "ru",
-  fragments: [
-    { kind: "heading", text: "Введение", language: "ru", words: 1, lines: [line(0, 0, 8)], sentences: [[0, 8]] },
-    {
-      kind: "body",
-      text: "Первая фраза. Вторая обрывается на",
-      language: "ru",
-      words: 6,
-      lines: [line(0, 0, 34)],
-      sentences: [
-        [0, 13],
-        [14, 34],
-      ],
-    },
-    {
-      kind: "excluded",
-      text: "1",
-      language: "ru",
-      words: 1,
-      lines: [line(0, 0, 1)],
-      sentences: [[0, 1]],
-      excludeReason: "колонтитул или номер страницы",
-    },
-    {
-      kind: "body",
-      text: "Середина кавычки. Конец абзаца.",
-      language: "ru",
-      words: 4,
-      lines: [line(1, 0, 31)],
-      sentences: [
-        [0, 17],
-        [18, 31],
-      ],
-    },
-  ],
-};
-
-function line(page: number, start: number, end: number) {
-  return { page, bbox: [60, 60, 535, 72] as [number, number, number, number], start, end };
-}
-
-async function setup() {
-  const teacher = await db.user.create({ data: { email: "t@example.com", isTeacher: true } });
-  const student = await db.user.create({ data: { email: "s@example.com" } });
-  const course = await createCourse(teacher.id, "Курс");
-  const code = (await getCourseForMember(course.id, teacher.id))!.course.invites[0].code;
-  await acceptInvite(code, student.id);
-  return { teacher, student, course };
-}
-
-async function upload(courseId: string, userId: string) {
-  return createTextFromPdf({ courseId, userId, title: "", fileName: "Статья Инниса.pdf", bytes: PDF });
-}
+import { EXTRACTED, setup, upload } from "./text-fixtures";
 
 async function contents(textId: string, userId: string) {
   const text = await getTextForTeacher(textId, userId);
@@ -111,8 +50,9 @@ describe("загрузка текста", () => {
     expect(text?.pageCount).toBe(2);
     expect(text?.fragments.map((f) => f.kind)).toEqual(["HEADING", "BODY", "EXCLUDED", "BODY"]);
 
-    // Студент открывает исходник, но не видит разбивку и список текстов.
-    expect((await getTextPdfForMember(created.id, student.id))?.data.toString()).toBe("%PDF-1.7 fake");
+    // Исходник видит преподаватель; студент — только после публикации. Разбивку студент не видит.
+    expect((await getTextPdfForMember(created.id, teacher.id))?.data.toString()).toBe("%PDF-1.7 fake");
+    expect(await getTextPdfForMember(created.id, student.id)).toBeNull();
     expect(await getTextForTeacher(created.id, student.id)).toBeNull();
     expect(await listTexts(course.id, student.id)).toEqual([]);
     expect(await listTexts(course.id, teacher.id)).toHaveLength(1);
@@ -123,7 +63,13 @@ describe("загрузка текста", () => {
     await expect(upload(course.id, student.id)).rejects.toBeInstanceOf(AccessError);
     const teacher = await db.user.findUniqueOrThrow({ where: { email: "t@example.com" } });
     await expect(
-      createTextFromPdf({ courseId: course.id, userId: teacher.id, title: "", fileName: "a.txt", bytes: new Uint8Array([1, 2, 3]) }),
+      createTextFromPdf({
+        courseId: course.id,
+        userId: teacher.id,
+        title: "",
+        fileName: "a.txt",
+        bytes: new Uint8Array([1, 2, 3]),
+      }),
     ).rejects.toBeInstanceOf(UploadError);
   });
 
@@ -193,5 +139,35 @@ describe("правка разбивки", () => {
     await expect(
       updateTextSettings(created.id, teacher.id, { title: "Иннис", wordsPerMinute: 5, displayMode: "PDF" }),
     ).rejects.toBeInstanceOf(UploadError);
+  });
+});
+
+describe("публикация", () => {
+  it("открывает текст студенту и запрещает править разбивку", async () => {
+    vi.spyOn(pdfService, "extractPdf").mockResolvedValue(EXTRACTED);
+    const { teacher, student, course } = await setup();
+    const created = await upload(course.id, teacher.id);
+    expect(await getTextPdfForMember(created.id, student.id)).toBeNull();
+
+    await expect(setPublished(created.id, student.id, true)).rejects.toBeInstanceOf(AccessError);
+    await setPublished(created.id, teacher.id, true);
+    expect((await listTexts(course.id, student.id)).map((t) => t.id)).toEqual([created.id]);
+    expect(await getTextPdfForMember(created.id, student.id)).not.toBeNull();
+
+    const [, first] = (await getTextForTeacher(created.id, teacher.id))!.fragments;
+    await expect(mergeWithNext(first.id, teacher.id)).rejects.toBeInstanceOf(UploadError);
+    await expect(splitAtSentence(first.id, teacher.id, 1)).rejects.toBeInstanceOf(UploadError);
+    await expect(reparseText(created.id, teacher.id)).rejects.toBeInstanceOf(UploadError);
+
+    await setPublished(created.id, teacher.id, false);
+    expect(await listTexts(course.id, student.id)).toEqual([]);
+    await splitAtSentence(first.id, teacher.id, 1);
+  });
+
+  it("не публикует текст с ошибкой разбора", async () => {
+    vi.spyOn(pdfService, "extractPdf").mockRejectedValue(new ExtractFailure("no_text_layer", "Нет слоя."));
+    const { teacher, course } = await setup();
+    const created = await upload(course.id, teacher.id);
+    await expect(setPublished(created.id, teacher.id, true)).rejects.toBeInstanceOf(UploadError);
   });
 });

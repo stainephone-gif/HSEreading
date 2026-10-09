@@ -16,10 +16,14 @@ model User {
   isTeacher Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  sessions     Session[]
-  memberships  CourseMember[]
-  ownedCourses Course[]       @relation("CourseOwner")
-  texts        Text[]
+  sessions       Session[]
+  memberships    CourseMember[]
+  ownedCourses   Course[]        @relation("CourseOwner")
+  texts          Text[]
+  readingCursors ReadingCursor[]
+  dwells         Dwell[]
+  taskPlacements TaskPlacement[]
+  answers        Answer[]
 }
 
 // Одноразовая ссылка для входа. В базе лежит только хэш токена.
@@ -119,9 +123,15 @@ model Text {
   wordsPerMinute Int         @default(200)
   uploadedById   String
   uploadedBy     User        @relation(fields: [uploadedById], references: [id])
+  // Пока текст не опубликован, студенты его не видят, а преподаватель правит разбивку.
+  publishedAt    DateTime?
+  // До дедлайна студент может отвечать на найденные задания и менять ответы.
+  deadline       DateTime?
   createdAt      DateTime    @default(now())
 
   fragments Fragment[]
+  readers   ReadingCursor[]
+  tasks     Task[]
 
   @@index([courseId])
 }
@@ -148,5 +158,114 @@ model Fragment {
   sentences     Json
   excludeReason String?
 
+  dwells         Dwell[]
+  anchoredTasks  Task[]          @relation("TaskFragment")
+  sectionTasks   Task[]          @relation("TaskSection")
+  taskPlacements TaskPlacement[]
+
   @@index([textId, position])
+}
+
+// Где студент в тексте: время последнего отчёта читалки. По нему сервер
+// ограничивает засчитанное время реально прошедшим.
+model ReadingCursor {
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  textId        String
+  text          Text     @relation(fields: [textId], references: [id], onDelete: Cascade)
+  firstOpenedAt DateTime @default(now())
+  lastBeatAt    DateTime @default(now())
+  // Сколько времени в читалке хотя бы один абзац был в зоне чтения.
+  activeMs      Int      @default(0)
+
+  @@id([userId, textId])
+}
+
+// Сколько времени фрагмент провёл в зоне чтения у студента.
+model Dwell {
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fragmentId String
+  fragment   Fragment  @relation(fields: [fragmentId], references: [id], onDelete: Cascade)
+  ms         Int       @default(0)
+  // Когда набралась половина расчётного времени чтения: с этого момента фрагмент дочитан.
+  readAt     DateTime?
+
+  @@id([userId, fragmentId])
+  @@index([fragmentId])
+}
+
+enum TaskMode {
+  // Привязано к абзацу: одно место у всех студентов.
+  ANCHORED
+  // Раскидано по разделу или диапазону страниц: у каждого студента свой абзац.
+  SCATTERED
+}
+
+enum AnswerFormat {
+  CHOICE
+  SELECTION
+  SHORT
+}
+
+// Спрятанное задание. Открывается студенту, когда его абзац дочитан.
+model Task {
+  id                String       @id @default(cuid())
+  textId            String
+  text              Text         @relation(fields: [textId], references: [id], onDelete: Cascade)
+  mode              TaskMode
+  format            AnswerFormat
+  prompt            String
+  // ANCHORED: абзац задания.
+  fragmentId        String?
+  fragment          Fragment?    @relation("TaskFragment", fields: [fragmentId], references: [id], onDelete: Restrict)
+  // SCATTERED: раздел (заголовок, до следующего заголовка) или диапазон страниц (с 1).
+  sectionFragmentId String?
+  sectionFragment   Fragment?    @relation("TaskSection", fields: [sectionFragmentId], references: [id], onDelete: Restrict)
+  pageFrom          Int?
+  pageTo            Int?
+  // CHOICE: варианты [{ text, correct }].
+  options           Json?
+  // SELECTION: эталонное предложение как смещения [start, end] в тексте абзаца.
+  answerRange       Json?
+  createdAt         DateTime     @default(now())
+
+  placements TaskPlacement[]
+  answers    Answer[]
+
+  @@index([textId])
+}
+
+// Абзац, в который раскиданное задание попало у конкретного студента.
+model TaskPlacement {
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fragmentId String
+  fragment   Fragment @relation(fields: [fragmentId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([taskId, userId])
+}
+
+enum Grade {
+  PASS
+  FAIL
+}
+
+model Answer {
+  taskId      String
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // CHOICE: { choice: номер }, SELECTION: { range: [start, end] }, SHORT: { text }.
+  value       Json
+  // Итог проверки: автоматической (CHOICE, SELECTION) или преподавателя (SHORT).
+  grade       Grade?
+  gradedAt    DateTime?
+  submittedAt DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@id([taskId, userId])
 }

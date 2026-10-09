@@ -8,11 +8,16 @@ export function SettingsForm({
   title,
   wordsPerMinute,
   displayMode,
+  deadline,
+  timeZoneLabel,
 }: {
   textId: string;
   title: string;
   wordsPerMinute: number;
   displayMode: string;
+  // Значение для datetime-local в поясе сайта.
+  deadline: string;
+  timeZoneLabel: string;
 }) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(settingsAction.bind(null, textId), {});
   return (
@@ -28,11 +33,19 @@ export function SettingsForm({
           Маркер задания откроется, когда абзац пробудет в зоне чтения половину расчётного времени.
         </span>
       </label>
+      <label className="stack" style={{ gap: 4 }}>
+        <span>Дедлайн ответов</span>
+        <input type="datetime-local" name="deadline" defaultValue={deadline} />
+        <span className="muted small">
+          Время: {timeZoneLabel}. До дедлайна студенты отвечают на найденные задания и могут менять ответы; после —
+          видят, что засчитано. Пустое поле — без дедлайна.
+        </span>
+      </label>
       <fieldset className="stack" style={{ gap: 4 }}>
         <legend>Режим показа</legend>
         <label>
           <input type="radio" name="displayMode" value="PDF" defaultChecked={displayMode === "PDF"} /> Страницы PDF:
-          оригинальная вёрстка
+          оригинальная вёрстка. На телефоне студент по умолчанию читает текстом и может переключиться на страницы
         </label>
         <label>
           <input type="radio" name="displayMode" value="WEB" defaultChecked={displayMode === "WEB"} /> Веб-текст: текст
@@ -40,7 +53,7 @@ export function SettingsForm({
         </label>
       </fieldset>
       <div className="row">
-        <button type="submit" disabled={pending}>
+        <button type="submit" className="secondary" disabled={pending}>
           Сохранить
         </button>
         {state.error && <span className="error">{state.error}</span>}

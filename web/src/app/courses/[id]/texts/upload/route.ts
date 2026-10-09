@@ -8,7 +8,10 @@ import { createTextFromPdf, UploadError } from "@/lib/texts";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: courseId } = await params;
   const back = (error: string) =>
-    NextResponse.redirect(new URL(`/courses/${courseId}/texts/new?error=${encodeURIComponent(error)}`, request.url), 303);
+    NextResponse.redirect(
+      new URL(`/courses/${courseId}/texts/new?error=${encodeURIComponent(error)}`, request.url),
+      303,
+    );
 
   const user = await getCurrentUser();
   if (!user) return NextResponse.redirect(new URL("/login", request.url), 303);

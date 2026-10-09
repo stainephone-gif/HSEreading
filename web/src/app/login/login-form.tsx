@@ -18,14 +18,7 @@ export function LoginForm({ next }: { next: string | null }) {
     <form action={action} className="stack">
       {next && <input type="hidden" name="next" value={next} />}
       <div className="row">
-        <input
-          type="email"
-          name="email"
-          placeholder="Почта"
-          required
-          autoComplete="email"
-          defaultValue={state.email}
-        />
+        <input type="email" name="email" placeholder="Почта" required autoComplete="email" defaultValue={state.email} />
         <button type="submit" disabled={pending}>
           {pending ? "Отправляем…" : "Получить ссылку"}
         </button>

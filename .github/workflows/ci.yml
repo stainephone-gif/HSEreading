@@ -17,7 +17,7 @@ jobs:
         env:
           POSTGRES_USER: polya
           POSTGRES_PASSWORD: polya
-          POSTGRES_DB: polya
+          POSTGRES_DB: polya_test
         ports:
           - 5432:5432
         options: >-
@@ -25,7 +25,7 @@ jobs:
           --health-interval 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://polya:polya@localhost:5432/polya
+      DATABASE_URL: postgresql://polya:polya@localhost:5432/polya_test
       APP_URL: http://localhost:3000
       TEACHER_EMAILS: teacher@example.com
     steps:
@@ -37,8 +37,8 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm run format:check
       - run: npm run typecheck
-      - run: npx prisma migrate deploy
       - run: npm test
       - run: npm run build
 

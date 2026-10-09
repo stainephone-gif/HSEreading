@@ -24,8 +24,8 @@ export default async function NewTextPage({
       <section className="card stack">
         <h1 style={{ margin: 0 }}>Новый текст</h1>
         <p className="muted" style={{ margin: 0 }}>
-          PDF должен содержать текстовый слой: сканы страниц картинками пока не поддерживаются. После загрузки
-          сервис разделит текст на абзацы, и вы сможете поправить разбивку.
+          PDF должен содержать текстовый слой: сканы страниц картинками пока не поддерживаются. После загрузки сервис
+          разделит текст на абзацы, и вы сможете поправить разбивку.
         </p>
         <form action={`/courses/${id}/texts/upload`} method="post" encType="multipart/form-data" className="stack">
           <input type="text" name="title" placeholder="Название (по умолчанию из имени файла)" maxLength={300} />
