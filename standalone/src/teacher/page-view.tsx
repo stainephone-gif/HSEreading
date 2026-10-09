@@ -97,3 +97,51 @@ export function PageView({
     </div>
   );
 }
+
+// Страница книги из DOCX: текст абзацами, как его увидит студент в режиме
+// «Текст». Для задания на выделение предложения выбираются щелчком.
+export function TextPageView({
+  page,
+  picking,
+  picked,
+  onPick,
+}: {
+  page: PageText;
+  picking: boolean;
+  picked: number | null;
+  onPick: (sentence: number) => void;
+}) {
+  const parts: React.ReactNode[] = [];
+  let at = 0;
+  if (picking) {
+    page.sentences.forEach(([s, e], k) => {
+      parts.push(page.content.slice(at, s));
+      parts.push(
+        <span
+          key={k}
+          role="button"
+          tabIndex={0}
+          aria-pressed={picked === k}
+          aria-label={`Предложение ${k + 1}`}
+          className={`sentence-inline${picked === k ? " picked" : ""}`}
+          onClick={() => onPick(k)}
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter" || ev.key === " ") {
+              ev.preventDefault();
+              onPick(k);
+            }
+          }}
+        >
+          {page.content.slice(s, e)}
+        </span>,
+      );
+      at = e;
+    });
+  }
+  parts.push(page.content.slice(at));
+  return (
+    <article className="web-text text-page" style={{ maxWidth: "none", margin: 0 }}>
+      {parts}
+    </article>
+  );
+}

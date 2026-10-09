@@ -48,7 +48,7 @@ function previousWord(text: string, end: number): string {
   return m ? m[1] : "";
 }
 
-export function splitSentences(text: string): Sentence[] {
+function splitLine(text: string): Sentence[] {
   const result: Sentence[] = [];
   let start = 0;
   const push = (end: number) => {
@@ -70,5 +70,17 @@ export function splitSentences(text: string): Sentence[] {
     start = end;
   }
   push(text.length);
+  return result;
+}
+
+// Перевод строки — граница абзаца: предложение через него не переходит
+// (заголовок без точки не склеивается со следующим абзацем).
+export function splitSentences(text: string): Sentence[] {
+  const result: Sentence[] = [];
+  let offset = 0;
+  for (const line of text.split("\n")) {
+    for (const [s, e] of splitLine(line)) result.push([s + offset, e + offset]);
+    offset += line.length + 1;
+  }
   return result;
 }

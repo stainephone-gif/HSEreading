@@ -14,6 +14,8 @@ import type { PageText } from "./pages";
 export const KEY_KIND = "polya-key";
 export const KEY_VERSION = 1;
 
+export type SourceKind = "pdf" | "docx";
+
 export type ChoiceOption = { text: string; correct: boolean };
 
 export type ProjectTask = {
@@ -41,7 +43,10 @@ export type Project = {
   wordsPerMinute: number;
   displayMode: "PDF" | "WEB";
   deadline: string | null;
+  // Исходный файл книги (PDF или DOCX; поле названо так с первой версии).
   pdf: { name: string; size: number; digest: string };
+  // DOCX читается только текстом: страниц PDF у него нет. Нет поля — PDF.
+  source?: SourceKind;
   // Число слов на странице: от него считается время дочитывания.
   pages: { words: number }[];
   tasks: ProjectTask[];
@@ -67,19 +72,20 @@ function detectLanguage(pages: PageText[]): string {
   return lat > cyr ? "en" : "ru";
 }
 
-export function newProject(fileName: string, pdf: Uint8Array, pages: PageText[]): Project {
+export function newProject(fileName: string, pdf: Uint8Array, pages: PageText[], source: SourceKind = "pdf"): Project {
   const pair = nacl.box.keyPair();
   return {
     kind: KEY_KIND,
     v: KEY_VERSION,
     exportId: randomId(),
     createdAt: new Date().toISOString(),
-    title: fileName.replace(/\.pdf$/i, "").trim() || "Текст",
+    title: fileName.replace(/\.(pdf|docx)$/i, "").trim() || "Текст",
     language: detectLanguage(pages),
     wordsPerMinute: 200,
-    displayMode: "PDF",
+    displayMode: source === "docx" ? "WEB" : "PDF",
     deadline: null,
     pdf: { name: fileName, size: pdf.length, digest: pdfDigest(pdf) },
+    source,
     pages: pages.map((p) => ({ words: p.words })),
     tasks: [],
     keys: {
@@ -185,7 +191,7 @@ export function buildKioskData(project: Project, pages: PageText[]): KioskData {
     exportId: project.exportId,
     textId: project.exportId,
     title: project.title,
-    displayMode: project.displayMode,
+    displayMode: project.source === "docx" ? "WEB" : project.displayMode,
     language: project.language,
     blocks,
     pages: pages.map((p) => ({ width: p.width, height: p.height })),

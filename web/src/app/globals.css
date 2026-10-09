@@ -709,6 +709,8 @@ table.summary th.num {
 
 .web-par p {
   margin: 0 0 1.1em;
+  /* Перевод строки внутри текста — новый абзац (страницы книги из DOCX). */
+  white-space: pre-line;
 }
 
 .web-par.debug {

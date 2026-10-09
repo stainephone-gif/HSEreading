@@ -1,12 +1,12 @@
-// Конструктор преподавателя: собрать читалку из PDF, разослать её и ключом
+// Конструктор преподавателя: собрать читалку из PDF или DOCX, разослать её и ключом
 // преподавателя открыть присланные отчёты.
 
 import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/logo";
-import { extractPages, type PageText } from "~/pages";
+import type { PageText } from "~/pages";
 import { newProject, parseProject, pdfDigest, type Project } from "~/project";
 import { Editor } from "./editor";
-import { openPdf } from "./files";
+import { BOOK_ACCEPT, readBook } from "./source";
 import { Results } from "./results";
 
 export type Workspace = { project: Project; pages: PageText[] | null; pdf: Uint8Array | null };
@@ -99,22 +99,17 @@ function Home({ onOpen }: { onOpen: (ws: Workspace, isNew: boolean) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
 
-  const fromPdf = async (file: File) => {
+  const fromBook = async (file: File) => {
     setError(null);
-    setProgress("Открываю PDF…");
+    setProgress("Открываю файл…");
     try {
-      const pdf = new Uint8Array(await file.arrayBuffer());
-      const { doc, close } = await openPdf(pdf);
-      const pages = await extractPages(doc, (done, total) => setProgress(`Читаю текст: страница ${done} из ${total}`));
-      await close();
-      if (pages.every((p) => p.words === 0)) {
-        setError("В PDF нет текстового слоя (это скан?). Читалке нужен PDF с текстом.");
-        return;
-      }
-      onOpen({ project: newProject(file.name, pdf, pages), pages, pdf }, true);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const book = await readBook(bytes, (done, total) => setProgress(`Читаю текст: страница ${done} из ${total}`));
+      if (typeof book === "string") return setError(book);
+      onOpen({ project: newProject(file.name, bytes, book.pages, book.source), pages: book.pages, pdf: bytes }, true);
     } catch (err) {
       console.error(err);
-      setError("Не удалось открыть PDF.");
+      setError("Не удалось открыть файл.");
     } finally {
       setProgress(null);
     }
@@ -131,21 +126,21 @@ function Home({ onOpen }: { onOpen: (ws: Workspace, isNew: boolean) => void }) {
     <main className="card stack">
       <h1 style={{ margin: 0 }}>Конструктор читалки</h1>
       <p style={{ margin: 0 }}>
-        Соберите из PDF офлайн-читалку со спрятанными заданиями и разошлите её студентам одним файлом. Студенты читают
-        без интернета и присылают вам файлы отчётов, а здесь вы открываете их ключом преподавателя.
+        Соберите из PDF или DOCX офлайн-читалку со спрятанными заданиями и разошлите её студентам одним файлом. Студенты
+        читают без интернета и присылают вам файлы отчётов, а здесь вы открываете их ключом преподавателя.
       </p>
       <section className="stack" style={{ gap: 12 }}>
         <h2 style={{ margin: 0 }}>Новая читалка</h2>
         <label className="stack" style={{ gap: 6 }}>
-          <span>PDF с текстовым слоем</span>
+          <span>Книга: PDF с текстовым слоем или документ Word (DOCX)</span>
           <input
             type="file"
-            accept="application/pdf,.pdf"
+            accept={BOOK_ACCEPT}
             disabled={Boolean(progress)}
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = "";
-              if (f) fromPdf(f);
+              if (f) fromBook(f);
             }}
           />
         </label>
@@ -165,7 +160,7 @@ function Home({ onOpen }: { onOpen: (ws: Workspace, isNew: boolean) => void }) {
           />
         </label>
         <p className="muted small" style={{ margin: 0 }}>
-          Откроются результаты. Чтобы поправить задания, потом понадобится и тот же PDF.
+          Откроются результаты. Чтобы поправить задания, потом понадобится и тот же файл книги.
         </p>
       </section>
       {progress && <p className="muted">{progress}</p>}
@@ -174,14 +169,13 @@ function Home({ onOpen }: { onOpen: (ws: Workspace, isNew: boolean) => void }) {
   );
 }
 
-// PDF для уже открытого ключа: должен быть тем же файлом.
-export async function attachPdf(ws: Workspace, file: File): Promise<Workspace | string> {
-  const pdf = new Uint8Array(await file.arrayBuffer());
-  if (pdfDigest(pdf) !== ws.project.pdf.digest) {
-    return `Это другой файл. Нужен тот же PDF, из которого собрана читалка: ${ws.project.pdf.name}.`;
+// Книга для уже открытого ключа: должна быть тем же файлом.
+export async function attachBook(ws: Workspace, file: File): Promise<Workspace | string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (pdfDigest(bytes) !== ws.project.pdf.digest) {
+    return `Это другой файл. Нужен тот же файл, из которого собрана читалка: ${ws.project.pdf.name}.`;
   }
-  const { doc, close } = await openPdf(pdf);
-  const pages = await extractPages(doc);
-  await close();
-  return { ...ws, pages, pdf };
+  const book = await readBook(bytes);
+  if (typeof book === "string") return book;
+  return { ...ws, pages: book.pages, pdf: bytes };
 }

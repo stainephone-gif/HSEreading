@@ -64,3 +64,11 @@ blockquote.picked {
   border-left: 2px solid var(--color-saffron-spark);
   font-size: 15px;
 }
+
+/* Страница DOCX в конструкторе: абзацы разделены переводом строки. */
+.text-page {
+  white-space: pre-line;
+  border: 1px solid var(--hairline);
+  padding: var(--spacing-18) var(--spacing-24);
+  font-size: 17px;
+}

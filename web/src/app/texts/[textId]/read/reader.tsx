@@ -282,6 +282,8 @@ function WebText({
               {picking
                 ? selection.sentences.map((range, k) => (
                     <span key={k}>
+                      {/* Текст между предложениями как есть: пробел или перевод строки (абзац). */}
+                      {b.content.slice(k === 0 ? 0 : selection.sentences[k - 1][1], range[0])}
                       {/* Не <button>: кнопка в браузерах не бывает строчной и ломает абзац. */}
                       <span
                         role="button"
@@ -297,7 +299,8 @@ function WebText({
                         }}
                       >
                         {b.content.slice(...range)}
-                      </span>{" "}
+                      </span>
+                      {k === selection.sentences.length - 1 && b.content.slice(range[1])}
                     </span>
                   ))
                 : b.content}
