@@ -29,9 +29,6 @@ export type ReaderData = {
   tasks: StudentTasks | null;
   // Предпросмотр: задания с привязкой к абзацу, маркер появляется по мере чтения.
   previewTasks: { id: string; fragmentId: string; prompt: string }[];
-  // Офлайн-читалка: абзацы (страницы), где у студента спрятаны задания. Если он
-  // пролистал такое место, не дочитав, читалка предупредит, что задание пропущено.
-  taskFragments?: string[];
 };
 
 export type StudentTask = {
