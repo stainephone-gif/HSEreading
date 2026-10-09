@@ -6,6 +6,6 @@ export async function resetDb() {
     throw new Error("Тесты очищают таблицы: укажите TEST_DATABASE_URL с базой *_test.");
   }
   await db.$executeRawUnsafe(
-    'TRUNCATE "Answer", "TaskPlacement", "Task", "Dwell", "ReadingCursor", "Fragment", "Text", "Invite", "CourseMember", "Course", "Session", "LoginToken", "User" CASCADE',
+    'TRUNCATE "KioskReport", "KioskExport", "Answer", "TaskPlacement", "Task", "Dwell", "ReadingCursor", "Fragment", "Text", "Invite", "CourseMember", "Course", "Session", "LoginToken", "User" CASCADE',
   );
 }

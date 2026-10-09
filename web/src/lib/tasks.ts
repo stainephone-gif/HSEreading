@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getMembership, requireCourseTeacher } from "./courses";
 import { db } from "./db";
 import type { FragmentLine, Sentence } from "./pdf-service";
+import { selectionMatches, shortAnswerError } from "./answer-rules";
 import { requireTextTeacher, UploadError } from "./texts";
 
 export type ChoiceOption = { text: string; correct: boolean };
@@ -57,16 +58,7 @@ export function scatterCandidates(
     .map((f) => f.id);
 }
 
-// Засчитывается выделение, которое пересекается с эталоном больше чем наполовину.
-export function selectionMatches(selected: Sentence, reference: Sentence): boolean {
-  const overlap = Math.min(selected[1], reference[1]) - Math.max(selected[0], reference[0]);
-  const longest = Math.max(selected[1] - selected[0], reference[1] - reference[0]);
-  return overlap > 0 && overlap * 2 > longest;
-}
-
-export function countSentences(text: string): number {
-  return text.split(/[.!?…]+(?:["»”)]*)(?:\s+|$)/).filter((s) => s.trim()).length;
-}
+export { countSentences, MAX_SHORT_ANSWER, selectionMatches, shortAnswerError } from "./answer-rules";
 
 // Преподаватель
 
@@ -259,7 +251,14 @@ export type StudentTask = {
   grade: Grade | null;
 };
 
-export type StudentTasks = { total: number; found: StudentTask[]; deadline: Date | null; closed: boolean };
+export type StudentTasks = {
+  total: number;
+  found: StudentTask[];
+  deadline: Date | null;
+  closed: boolean;
+  // Офлайн-читалка: ответы проверяются после загрузки отчёта, оценок в ней нет.
+  gradesPending?: boolean;
+};
 
 // Найденные студентом задания: те, чей абзац у него уже дочитан. О ненайденных
 // студент знает только их число.
@@ -322,8 +321,6 @@ const answerValue = z.union([
   z.object({ text: z.string() }),
 ]);
 
-export const MAX_SHORT_ANSWER = 1000;
-
 export async function submitAnswer(taskId: string, userId: string, raw: unknown, now = new Date()) {
   const task = await db.task.findUnique({
     where: { id: taskId },
@@ -357,9 +354,8 @@ export async function submitAnswer(taskId: string, userId: string, raw: unknown,
     grade = selectionMatches(range, task.answerRange as Sentence) ? Grade.PASS : Grade.FAIL;
   } else {
     const text = "text" in v ? v.text.trim() : "";
-    if (!text) throw new UploadError("Напишите ответ.");
-    if (text.length > MAX_SHORT_ANSWER) throw new UploadError(`Ответ длиннее ${MAX_SHORT_ANSWER} знаков.`);
-    if (countSentences(text) > 3) throw new UploadError("Ответ должен уложиться в три предложения.");
+    const error = shortAnswerError(text);
+    if (error) throw new UploadError(error);
     value = { text };
   }
 

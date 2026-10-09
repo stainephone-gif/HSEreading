@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:kiosk && next build",
+    "build:kiosk": "vite build -c vite.kiosk.config.ts",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -24,6 +25,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "tweetnacl": "^1.0.3",
     "zod": "^4.6.5"
   },
   "devDependencies": {

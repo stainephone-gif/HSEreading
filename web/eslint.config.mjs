@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Копия воркера PDF.js из node_modules.
     "public/pdfjs/**",
+    // Собранная офлайн-читалка.
+    "kiosk-dist/**",
   ]),
 ]);
 

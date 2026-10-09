@@ -24,6 +24,8 @@ RUN addgroup -S app && adduser -S app -G app && mkdir /data && chown app:app /da
 COPY --from=builder --chown=app:app /app/.next/standalone ./
 COPY --from=builder --chown=app:app /app/.next/static ./.next/static
 COPY --from=builder --chown=app:app /app/public ./public
+# Офлайн-читалка: сервер вкладывает её в скачиваемый HTML-файл.
+COPY --from=builder --chown=app:app /app/kiosk-dist ./kiosk-dist
 USER app
 EXPOSE 3000
 CMD ["node", "server.js"]

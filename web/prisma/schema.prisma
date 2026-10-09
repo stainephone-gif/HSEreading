@@ -24,6 +24,8 @@ model User {
   dwells         Dwell[]
   taskPlacements TaskPlacement[]
   answers        Answer[]
+  kioskExports   KioskExport[]
+  kioskReports   KioskReport[]
 }
 
 // Одноразовая ссылка для входа. В базе лежит только хэш токена.
@@ -129,9 +131,10 @@ model Text {
   deadline       DateTime?
   createdAt      DateTime    @default(now())
 
-  fragments Fragment[]
-  readers   ReadingCursor[]
-  tasks     Task[]
+  fragments    Fragment[]
+  readers      ReadingCursor[]
+  tasks        Task[]
+  kioskExports KioskExport[]
 
   @@index([courseId])
 }
@@ -268,4 +271,45 @@ model Answer {
   updatedAt   DateTime  @updatedAt
 
   @@id([taskId, userId])
+}
+
+// Офлайн-читалка (киоск): HTML-файл с текстом и заданиями, который рассылается
+// студентам. Отчёты студентов шифруются открытым ключом выгрузки, а подписываются
+// ключом, спрятанным в файле; ключи расшифровки и проверки лежат только здесь.
+model KioskExport {
+  id          String   @id @default(cuid())
+  textId      String
+  text        Text     @relation(fields: [textId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  publicKey   Bytes
+  secretKey   Bytes
+  macKey      Bytes
+  localKey    Bytes
+  createdAt   DateTime @default(now())
+
+  reports KioskReport[]
+
+  @@index([textId])
+}
+
+// Загруженный преподавателем отчёт киоска. Повторная загрузка того же файла
+// ничего не меняет: данные сливаются по максимуму.
+model KioskReport {
+  id          String      @id @default(cuid())
+  exportId    String
+  export      KioskExport @relation(fields: [exportId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Копия киоска (браузер), из которой пришёл отчёт.
+  instanceId  String
+  // Время сохранения отчёта по часам студента.
+  savedAt     DateTime
+  readCount   Int
+  answerCount Int
+  // SHA-256 файла: один и тот же файл не записывается дважды.
+  digest      String      @unique
+  importedAt  DateTime    @default(now())
+
+  @@index([exportId, userId])
 }

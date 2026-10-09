@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getReaderData } from "@/lib/reading";
 import { requireUser } from "@/lib/session";
 import { formatDateTime } from "@/lib/time";
-import { Reader } from "./reader";
+import { ServerReader } from "./server-reader";
 
 export default async function ReadPage({ params }: { params: Promise<{ textId: string }> }) {
   const { textId } = await params;
@@ -24,9 +24,8 @@ export default async function ReadPage({ params }: { params: Promise<{ textId: s
           чтения; раскиданные задания у каждого студента в своём месте и здесь не показаны. Ничего не записывается.
         </p>
       )}
-      <Reader
+      <ServerReader
         data={data}
-        pdfUrl={`/texts/${data.textId}/pdf`}
         deadlineLabel={
           data.tasks?.deadline
             ? data.tasks.closed

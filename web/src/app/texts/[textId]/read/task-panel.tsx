@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { formatPoints, TASK_POINTS, taskPoints } from "@/lib/scoring";
 import type { StudentTask, StudentTasks } from "@/lib/tasks";
-import { submitAnswerAction } from "./actions";
 
 const FORMAT_HINT = {
   CHOICE: "Выберите вариант",
@@ -26,7 +25,7 @@ export function TaskBar({
         Найдено заданий: {tasks.found.length} из {tasks.total}
       </button>
       {deadlineLabel && <span className="muted small">{deadlineLabel}</span>}
-      {tasks.closed && tasks.total > 0 && (
+      {tasks.closed && tasks.total > 0 && !tasks.gradesPending && (
         <span className="small">
           Баллы за задания:{" "}
           {formatPoints(taskPoints(tasks.found.filter((t) => t.grade === "PASS").length, tasks.total))} из {TASK_POINTS}
@@ -72,17 +71,19 @@ export function TaskList({
 }
 
 export function TaskPanel({
-  textId,
   task,
+  onSubmit,
   closed,
+  gradesPending,
   selectedSentence,
   onTasks,
   onClose,
   onBack,
 }: {
-  textId: string;
   task: StudentTask;
+  onSubmit: (taskId: string, value: unknown) => Promise<{ error?: string; tasks?: StudentTasks }>;
   closed: boolean;
+  gradesPending?: boolean;
   // Для ответа выделением: предложение, выбранное кликом в абзаце.
   selectedSentence: number | null;
   onTasks: (tasks: StudentTasks) => void;
@@ -97,7 +98,7 @@ export function TaskPanel({
 
   const save = (value: unknown) =>
     startTransition(async () => {
-      const res = await submitAnswerAction(textId, task.id, value);
+      const res = await onSubmit(task.id, value);
       setError(res.error ?? null);
       setSaved(!res.error);
       if (res.tasks) onTasks(res.tasks);
@@ -171,13 +172,17 @@ export function TaskPanel({
       {closed ? (
         <p className="small" style={{ margin: 0 }}>
           Дедлайн прошёл.{" "}
-          {task.grade === "PASS"
-            ? "Ответ засчитан."
-            : task.grade === "FAIL"
-              ? "Ответ не засчитан."
-              : task.answer
-                ? "Ответ ещё не проверен."
-                : "Ответа нет."}
+          {gradesPending
+            ? task.answer
+              ? "Ответ проверит преподаватель по вашему отчёту."
+              : "Ответа нет."
+            : task.grade === "PASS"
+              ? "Ответ засчитан."
+              : task.grade === "FAIL"
+                ? "Ответ не засчитан."
+                : task.answer
+                  ? "Ответ ещё не проверен."
+                  : "Ответа нет."}
         </p>
       ) : (
         <div className="row">

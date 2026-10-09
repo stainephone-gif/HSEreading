@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 /storage
 /public/pdfjs
+
+# Собранная офлайн-читалка (npm run build:kiosk)
+/kiosk-dist

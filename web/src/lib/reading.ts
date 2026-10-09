@@ -1,21 +1,14 @@
 import { FragmentKind } from "@prisma/client";
 import { getMembership, requireCourseTeacher } from "./courses";
 import { db } from "./db";
-import { unlockSeconds } from "./fragments";
+import { creditAllowance, creditFor, thresholdMs } from "./dwell-rules";
 import type { FragmentLine } from "./pdf-service";
 import { ensurePlacements, getStudentTasks, type StudentTasks } from "./tasks";
 
-// Читалка отчитывается раз в BEAT_INTERVAL_MS. За один отчёт засчитывается не
-// больше, чем прошло по часам сервера с прошлого отчёта (с небольшим допуском на
-// сеть), и не больше MAX_CREDIT_MS: долгий перерыв не превращается в чтение.
-export const BEAT_INTERVAL_MS = 5_000;
-export const MAX_CREDIT_MS = 15_000;
-const TOLERANCE_MS = 1_000;
+// Сервер засчитывает не больше времени, чем прошло по его часам (dwell-rules.ts).
 const MAX_CLAIMS = 200;
 
-export function thresholdMs(wordCount: number, wordsPerMinute: number): number {
-  return Math.max(1, unlockSeconds(wordCount, wordsPerMinute)) * 1000;
-}
+export { BEAT_INTERVAL_MS, MAX_CREDIT_MS, thresholdMs } from "./dwell-rules";
 
 export type ReaderFragment = {
   id: string;
@@ -134,7 +127,7 @@ export async function recordDwell(
       FOR UPDATE`;
 
     const elapsed = created ? 0 : Math.max(0, now.getTime() - cursor.lastBeatAt.getTime());
-    const allowance = created ? 0 : Math.min(elapsed + TOLERANCE_MS, MAX_CREDIT_MS);
+    const allowance = created ? 0 : creditAllowance(elapsed);
     if (!created) {
       await tx.readingCursor.update({ where: { userId_textId: { userId, textId } }, data: { lastBeatAt: now } });
     }
@@ -142,7 +135,7 @@ export async function recordDwell(
 
     let active = 0;
     for (const f of fragments) {
-      const credit = Math.min(Math.max(Math.round(Number(claims[f.id]) || 0), 0), allowance);
+      const credit = creditFor(claims[f.id], allowance);
       if (credit === 0) continue;
       active = Math.max(active, credit);
       const dwell = await tx.dwell.upsert({
