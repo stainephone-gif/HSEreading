@@ -1,0 +1,86 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  // Может создавать курсы. Выставляется при входе по списку TEACHER_EMAILS.
+  isTeacher Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  sessions     Session[]
+  memberships  CourseMember[]
+  ownedCourses Course[]       @relation("CourseOwner")
+}
+
+// Одноразовая ссылка для входа. В базе лежит только хэш токена.
+model LoginToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  // Куда вернуть пользователя после входа (относительный путь).
+  next      String?
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  title     String
+  ownerId   String
+  owner     User     @relation("CourseOwner", fields: [ownerId], references: [id])
+  createdAt DateTime @default(now())
+
+  members CourseMember[]
+  invites Invite[]
+}
+
+enum CourseRole {
+  TEACHER
+  STUDENT
+}
+
+model CourseMember {
+  courseId String
+  course   Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     CourseRole
+  joinedAt DateTime   @default(now())
+
+  @@id([courseId, userId])
+  @@index([userId])
+}
+
+// Ссылка-приглашение студентов в курс. Одна ссылка на много студентов.
+model Invite {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  courseId  String
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  role      CourseRole @default(STUDENT)
+  revokedAt DateTime?
+  createdAt DateTime   @default(now())
+}
