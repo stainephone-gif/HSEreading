@@ -17,5 +17,5 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const result = await recordDwell(textId, user.id, parsed.data.claims);
   if (!result.ok) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  return NextResponse.json({ readIds: result.readIds });
+  return NextResponse.json({ readIds: result.readIds, tasks: result.tasks });
 }

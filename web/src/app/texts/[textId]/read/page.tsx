@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getReaderData } from "@/lib/reading";
 import { requireUser } from "@/lib/session";
+import { formatDateTime } from "@/lib/time";
 import { Reader } from "./reader";
 
 export default async function ReadPage({ params }: { params: Promise<{ textId: string }> }) {
@@ -19,10 +20,21 @@ export default async function ReadPage({ params }: { params: Promise<{ textId: s
       {data.preview && (
         <p className="muted" style={{ margin: 0 }}>
           Предпросмотр: так текст увидят студенты. Рамками показаны абзацы, затемнены края экрана вне зоны чтения,
-          счётчик показывает, сколько абзац пробыл в зоне. Ничего не записывается.
+          счётчик показывает, сколько абзац пробыл в зоне. Маркеры заданий с привязкой к абзацу появляются по мере
+          чтения; раскиданные задания у каждого студента в своём месте и здесь не показаны. Ничего не записывается.
         </p>
       )}
-      <Reader data={data} pdfUrl={`/texts/${data.textId}/pdf`} />
+      <Reader
+        data={data}
+        pdfUrl={`/texts/${data.textId}/pdf`}
+        deadlineLabel={
+          data.tasks?.deadline
+            ? data.tasks.closed
+              ? "Дедлайн прошёл, ответы закрыты"
+              : `Ответы до ${formatDateTime(data.tasks.deadline)}`
+            : null
+        }
+      />
     </main>
   );
 }

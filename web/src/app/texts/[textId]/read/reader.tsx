@@ -1,8 +1,12 @@
 "use client";
 
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { sentenceRects } from "@/lib/geometry";
+import type { Sentence } from "@/lib/pdf-service";
 import type { ReaderData } from "@/lib/reading";
+import type { StudentTasks } from "@/lib/tasks";
+import { TaskBar, TaskList, TaskPanel } from "./task-panel";
 
 // Зона чтения: средняя полоса экрана, по 20% высоты сверху и снизу не считаются.
 const ZONE_MARGIN = "-20% 0px -20% 0px";
@@ -14,12 +18,58 @@ const MAX_PAGE_WIDTH = 900;
 // которых нет в Safari и не самых свежих Chrome.
 const loadPdfjs = () => import("pdfjs-dist/legacy/build/pdf.mjs");
 
-export function Reader({ data, pdfUrl }: { data: ReaderData; pdfUrl: string }) {
+type Marker = { taskId: string; isNew: boolean };
+type SelectionOverlay = { fragmentId: string; rects: { index: number; rects: ReturnType<typeof sentenceRects> }[] };
+
+export function Reader({
+  data,
+  pdfUrl,
+  deadlineLabel,
+}: {
+  data: ReaderData;
+  pdfUrl: string;
+  deadlineLabel: string | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const zone = useReadingZone(data);
+  const [tasks, setTasks] = useState<StudentTasks | null>(data.tasks);
+  // Что открыто в панели: список найденных или конкретное задание.
+  const [panel, setPanel] = useState<"list" | string | null>(null);
+  const [selectedSentence, setSelectedSentence] = useState<number | null>(null);
+  // Задания, которые студент уже видел: новые маркеры мигают.
+  const [seen, setSeen] = useState(() => new Set(data.tasks?.found.map((t) => t.id) ?? []));
+  const zone = useReadingZone(data, (body) => body.tasks && setTasks(body.tasks));
+
+  const openTask = useCallback((id: string) => {
+    setPanel(id);
+    setSelectedSentence(null);
+    setSeen((prev) => (prev.has(id) ? prev : new Set([...prev, id])));
+  }, []);
+
+  const markers = useMemo(() => {
+    const map = new Map<string, Marker[]>();
+    const add = (fragmentId: string, taskId: string) =>
+      map.set(fragmentId, [...(map.get(fragmentId) ?? []), { taskId, isNew: !seen.has(taskId) }]);
+    if (tasks) tasks.found.forEach((t) => add(t.fragmentId, t.id));
+    else data.previewTasks.filter((t) => zone.readIds.has(t.fragmentId)).forEach((t) => add(t.fragmentId, t.id));
+    return map;
+  }, [tasks, data.previewTasks, zone.readIds, seen]);
+
+  const openStudentTask = tasks?.found.find((t) => t.id === panel) ?? null;
+  const openPreviewTask = !tasks ? (data.previewTasks.find((t) => t.id === panel) ?? null) : null;
+
+  const selection: SelectionOverlay | null =
+    openStudentTask?.selection && !tasks?.closed
+      ? {
+          fragmentId: openStudentTask.fragmentId,
+          rects: openStudentTask.selection.sentences.map((range: Sentence, index) => ({
+            index,
+            rects: sentenceRects(openStudentTask.selection!.lines, range),
+          })),
+        }
+      : null;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -52,8 +102,34 @@ export function Reader({ data, pdfUrl }: { data: ReaderData; pdfUrl: string }) {
 
   return (
     <div ref={containerRef} className="reader">
+      {tasks && <TaskBar tasks={tasks} deadlineLabel={deadlineLabel} onOpenList={() => setPanel("list")} />}
       {error && <p className="error">{error}</p>}
       {data.preview && <ZoneShade />}
+      {tasks && panel === "list" && <TaskList tasks={tasks} onOpen={openTask} onClose={() => setPanel(null)} />}
+      {tasks && openStudentTask && (
+        <TaskPanel
+          key={openStudentTask.id}
+          textId={data.textId}
+          task={openStudentTask}
+          closed={tasks.closed}
+          selectedSentence={selectedSentence}
+          onTasks={setTasks}
+          onClose={() => setPanel(null)}
+          onBack={() => setPanel("list")}
+        />
+      )}
+      {openPreviewTask && (
+        <aside className="task-panel" aria-label="Задание">
+          <div className="row">
+            <span className="muted small">Предпросмотр задания</span>
+            <span className="spacer" />
+            <button type="button" className="link" onClick={() => setPanel(null)} aria-label="Закрыть">
+              ✕
+            </button>
+          </div>
+          <p className="task-prompt">{openPreviewTask.prompt}</p>
+        </aside>
+      )}
       {width > 0 &&
         data.pages.map((size, i) => (
           <Page
@@ -66,6 +142,11 @@ export function Reader({ data, pdfUrl }: { data: ReaderData; pdfUrl: string }) {
             observe={zone.observe}
             dwellMs={zone.dwellMs}
             readIds={zone.readIds}
+            markers={markers}
+            onMarker={openTask}
+            selection={selection}
+            selectedSentence={selectedSentence}
+            onSentence={setSelectedSentence}
           />
         ))}
     </div>
@@ -81,9 +162,28 @@ type PageProps = {
   observe: (el: HTMLElement | null) => void;
   dwellMs: Record<string, number>;
   readIds: Set<string>;
+  markers: Map<string, Marker[]>;
+  onMarker: (taskId: string) => void;
+  selection: SelectionOverlay | null;
+  selectedSentence: number | null;
+  onSentence: (index: number) => void;
 };
 
-function Page({ index, size, width, doc, data, observe, dwellMs, readIds }: PageProps) {
+function Page({
+  index,
+  size,
+  width,
+  doc,
+  data,
+  observe,
+  dwellMs,
+  readIds,
+  markers,
+  onMarker,
+  selection,
+  selectedSentence,
+  onSentence,
+}: PageProps) {
   const scale = width / size.width;
   const height = Math.round(size.height * scale);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -165,6 +265,43 @@ function Page({ index, size, width, doc, data, observe, dwellMs, readIds }: Page
           </div>
         );
       })}
+      {data.fragments.map((f) => {
+        const list = markers.get(f.id);
+        const anchor = f.lines[0];
+        if (!list || anchor.page !== index) return null;
+        return list.map((m, k) => (
+          <button
+            key={m.taskId}
+            type="button"
+            className={`task-marker${m.isNew ? " new" : ""}`}
+            style={{ top: anchor.bbox[1] * scale - 4, right: 4 + k * 30 }}
+            onClick={() => onMarker(m.taskId)}
+            aria-label="Открыть задание"
+            title="Задание"
+          >
+            ?
+          </button>
+        ));
+      })}
+      {selection?.rects.flatMap(({ index: sentence, rects }) =>
+        rects
+          .filter((r) => r.page === index)
+          .map((r, k) => (
+            <button
+              key={`${sentence}:${k}`}
+              type="button"
+              className={`sentence-pick${selectedSentence === sentence ? " picked" : ""}`}
+              style={{
+                left: r.x0 * scale,
+                top: r.y0 * scale,
+                width: (r.x1 - r.x0) * scale,
+                height: (r.y1 - r.y0) * scale,
+              }}
+              onClick={() => onSentence(sentence)}
+              aria-label={`Предложение ${sentence + 1}`}
+            />
+          )),
+      )}
     </div>
   );
 }
@@ -179,7 +316,14 @@ function ZoneShade() {
 }
 
 // Учёт времени: какие абзацы сейчас в зоне чтения и сколько они там пробыли.
-function useReadingZone(data: ReaderData) {
+type DwellResponse = { readIds?: string[]; tasks?: StudentTasks };
+
+function useReadingZone(data: ReaderData, onResponse: (body: DwellResponse) => void) {
+  // Колбэк в ref: эффект отчётов не перезапускается при каждом рендере.
+  const onResponseRef = useRef(onResponse);
+  useEffect(() => {
+    onResponseRef.current = onResponse;
+  });
   // Сколько строк каждого абзаца сейчас пересекают зону чтения.
   const inZone = useRef(new Map<string, number>());
   const lineInZone = useRef(new WeakMap<Element, boolean>());
@@ -240,10 +384,11 @@ function useReadingZone(data: ReaderData) {
       }
       fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true })
         .then((res) => (res.ok ? res.json() : null))
-        .then((body: { readIds?: string[] } | null) => {
+        .then((body: DwellResponse | null) => {
           if (!body?.readIds) return;
           readRef.current = new Set(body.readIds);
           setReadIds(readRef.current);
+          onResponseRef.current(body);
         })
         .catch(() => {});
     };

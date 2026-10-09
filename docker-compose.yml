@@ -37,6 +37,7 @@ services:
       TEACHER_EMAILS: ${TEACHER_EMAILS:-}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-Поля <no-reply@localhost>}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Moscow}
       PDF_SERVICE_URL: http://pdf:8000
       STORAGE_DIR: /data
     volumes:

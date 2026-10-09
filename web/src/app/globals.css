@@ -153,6 +153,7 @@ code.invite {
   font-size: 0.9rem;
 }
 
+input[type="datetime-local"],
 input[type="number"] {
   font: inherit;
   padding: 8px 10px;
@@ -400,4 +401,132 @@ table.summary th {
 
 .table-wrap {
   overflow-x: auto;
+}
+
+/* Задания в читалке */
+
+.task-bar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  align-self: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.task-marker {
+  position: absolute;
+  z-index: 3;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.task-marker.new {
+  animation: marker-pulse 1.2s ease-in-out 4;
+}
+
+@keyframes marker-pulse {
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-marker.new {
+    animation: none;
+  }
+}
+
+.task-panel {
+  position: fixed;
+  z-index: 10;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  max-height: 60vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+}
+
+@media (min-width: 1100px) {
+  .task-panel {
+    left: auto;
+    right: 16px;
+    top: 80px;
+    bottom: auto;
+    width: 340px;
+    max-height: calc(100vh - 100px);
+  }
+}
+
+.task-prompt {
+  margin: 0;
+  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+.task-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-panel textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  resize: vertical;
+}
+
+blockquote.picked {
+  margin: 0;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg);
+}
+
+.sentence-pick {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: rgb(47 93 138 / 0.12);
+  cursor: pointer;
+}
+
+.sentence-pick:hover {
+  background: rgb(47 93 138 / 0.25);
+}
+
+.sentence-pick.picked {
+  background: rgb(230 160 0 / 0.4);
+}
+
+input[type="datetime-local"] {
+  width: auto;
+  max-width: 100%;
 }

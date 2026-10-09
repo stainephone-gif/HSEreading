@@ -3,6 +3,7 @@ import { getMembership, requireCourseTeacher } from "./courses";
 import { db } from "./db";
 import { unlockSeconds } from "./fragments";
 import type { FragmentLine } from "./pdf-service";
+import { ensurePlacements, getStudentTasks, type StudentTasks } from "./tasks";
 
 // Читалка отчитывается раз в BEAT_INTERVAL_MS. За один отчёт засчитывается не
 // больше, чем прошло по часам сервера с прошлого отчёта (с небольшим допуском на
@@ -32,6 +33,10 @@ export type ReaderData = {
   preview: boolean;
   dwellMs: Record<string, number>;
   readIds: string[];
+  // Студенту: найденные задания и их общее число.
+  tasks: StudentTasks | null;
+  // Предпросмотр: задания с привязкой к абзацу, маркер появляется по мере чтения.
+  previewTasks: { id: string; fragmentId: string; prompt: string }[];
 };
 
 export async function getReaderData(textId: string, userId: string): Promise<ReaderData | null> {
@@ -51,6 +56,15 @@ export async function getReaderData(textId: string, userId: string): Promise<Rea
         where: { userId, fragment: { textId } },
         select: { fragmentId: true, ms: true, readAt: true },
       });
+  // Места раскиданных заданий закрепляются при первом открытии текста.
+  if (!preview) await ensurePlacements(textId, userId);
+  const previewTasks = preview
+    ? await db.task.findMany({
+        where: { textId, mode: "ANCHORED" },
+        select: { id: true, fragmentId: true, prompt: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
 
   return {
     textId: text.id,
@@ -66,10 +80,12 @@ export async function getReaderData(textId: string, userId: string): Promise<Rea
     preview,
     dwellMs: Object.fromEntries(dwells.map((d) => [d.fragmentId, d.ms])),
     readIds: dwells.filter((d) => d.readAt).map((d) => d.fragmentId),
+    tasks: preview ? null : await getStudentTasks(textId, userId),
+    previewTasks: previewTasks.map((t) => ({ id: t.id, fragmentId: t.fragmentId!, prompt: t.prompt })),
   };
 }
 
-export type DwellResult = { ok: false } | { ok: true; readIds: string[] };
+export type DwellResult = { ok: false } | { ok: true; readIds: string[]; tasks: StudentTasks };
 
 // Принимает отчёт читалки: сколько миллисекунд каждый фрагмент был в зоне чтения.
 export async function recordDwell(
@@ -140,7 +156,7 @@ export async function recordDwell(
     where: { userId, readAt: { not: null }, fragment: { textId } },
     select: { fragmentId: true },
   });
-  return { ok: true, readIds: read.map((d) => d.fragmentId) };
+  return { ok: true, readIds: read.map((d) => d.fragmentId), tasks: await getStudentTasks(textId, userId, now) };
 }
 
 export type ReadingSummaryRow = {

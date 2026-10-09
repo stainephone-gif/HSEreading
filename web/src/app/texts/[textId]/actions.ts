@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
+import { createTask, deleteTask, gradeAnswer } from "@/lib/tasks";
 import {
   mergeWithNext,
   reparseText,
@@ -38,6 +39,20 @@ export async function setKindAction(textId: string, fragmentId: string, kind: st
   return run(textId, (userId) => setFragmentKind(fragmentId, userId, kind));
 }
 
+export async function createTaskAction(textId: string, input: unknown) {
+  return run(textId, async (userId) => {
+    await createTask(textId, userId, input);
+  });
+}
+
+export async function deleteTaskAction(textId: string, taskId: string) {
+  return run(textId, (userId) => deleteTask(taskId, userId));
+}
+
+export async function gradeAction(textId: string, taskId: string, studentId: string, grade: "PASS" | "FAIL" | null) {
+  return run(textId, (userId) => gradeAnswer(taskId, studentId, userId, grade));
+}
+
 export async function publishAction(textId: string, published: boolean) {
   return run(textId, (userId) => setPublished(textId, userId, published));
 }
@@ -52,6 +67,7 @@ export async function settingsAction(textId: string, _prev: ActionResult, formDa
       title: String(formData.get("title") ?? ""),
       wordsPerMinute: Number(formData.get("wordsPerMinute")),
       displayMode: String(formData.get("displayMode") ?? "PDF"),
+      deadline: String(formData.get("deadline") ?? ""),
     }),
   );
 }

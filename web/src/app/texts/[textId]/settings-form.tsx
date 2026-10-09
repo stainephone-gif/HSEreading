@@ -8,11 +8,16 @@ export function SettingsForm({
   title,
   wordsPerMinute,
   displayMode,
+  deadline,
+  timeZoneLabel,
 }: {
   textId: string;
   title: string;
   wordsPerMinute: number;
   displayMode: string;
+  // Значение для datetime-local в поясе сайта.
+  deadline: string;
+  timeZoneLabel: string;
 }) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(settingsAction.bind(null, textId), {});
   return (
@@ -26,6 +31,14 @@ export function SettingsForm({
         <input type="number" name="wordsPerMinute" defaultValue={wordsPerMinute} min={50} max={600} required />
         <span className="muted small">
           Маркер задания откроется, когда абзац пробудет в зоне чтения половину расчётного времени.
+        </span>
+      </label>
+      <label className="stack" style={{ gap: 4 }}>
+        <span>Дедлайн ответов</span>
+        <input type="datetime-local" name="deadline" defaultValue={deadline} />
+        <span className="muted small">
+          Время: {timeZoneLabel}. До дедлайна студенты отвечают на найденные задания и могут менять ответы; после —
+          видят, что засчитано. Пустое поле — без дедлайна.
         </span>
       </label>
       <fieldset className="stack" style={{ gap: 4 }}>
