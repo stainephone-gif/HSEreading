@@ -47,6 +47,12 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                       ? "ошибка разбора"
                       : "разбирается"}
                 </span>
+                {t.publishedAt && (
+                  <>
+                    {" "}
+                    · <Link href={`/texts/${t.id}/results`}>результаты</Link>
+                  </>
+                )}
               </li>
             ))}
           </ul>

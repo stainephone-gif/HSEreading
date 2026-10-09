@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LogoMark } from "@/components/logo";
 import { getCurrentUser } from "@/lib/session";
 import { logoutAction } from "./actions";
+// Inter из npm, а не из Google Fonts: сборка и работа не зависят от доступа к Google.
+import "@fontsource-variable/inter";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,11 +20,12 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <div className="shell">
           <header className="topbar">
             <Link href="/" className="brand">
+              <LogoMark />
               Поля
             </Link>
             {user && (
               <form action={logoutAction} className="row">
-                <span className="muted">{user.name ?? user.email}</span>
+                <span className="nav-label">{user.name ?? user.email}</span>
                 <button type="submit" className="link">
                   Выйти
                 </button>

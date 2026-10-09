@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { formatPoints, TASK_POINTS, taskPoints } from "@/lib/scoring";
 import type { StudentTask, StudentTasks } from "@/lib/tasks";
 import { submitAnswerAction } from "./actions";
 
@@ -25,6 +26,12 @@ export function TaskBar({
         Найдено заданий: {tasks.found.length} из {tasks.total}
       </button>
       {deadlineLabel && <span className="muted small">{deadlineLabel}</span>}
+      {tasks.closed && tasks.total > 0 && (
+        <span className="small">
+          Баллы за задания:{" "}
+          {formatPoints(taskPoints(tasks.found.filter((t) => t.grade === "PASS").length, tasks.total))} из {TASK_POINTS}
+        </span>
+      )}
     </div>
   );
 }

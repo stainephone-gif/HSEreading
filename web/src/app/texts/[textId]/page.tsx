@@ -86,6 +86,7 @@ export default async function TextPage({ params }: { params: Promise<{ textId: s
             <h2 style={{ margin: 0 }}>Публикация</h2>
             <span className="spacer" />
             <Link href={`/texts/${text.id}/read`}>Предпросмотр читалки</Link>
+            <Link href={`/texts/${text.id}/results`}>Результаты</Link>
           </div>
           <p style={{ margin: 0 }}>
             {published
@@ -150,7 +151,7 @@ export default async function TextPage({ params }: { params: Promise<{ textId: s
       </section>
 
       {text.status === "READY" && (
-        <section className="card stack">
+        <section className="card stack" id="tasks">
           <h2 style={{ margin: 0 }}>Спрятанные задания</h2>
           <p className="muted" style={{ margin: 0 }}>
             Задание открывается студенту, когда он дочитает нужный абзац. Задания дают до 8 баллов за текст, поровну:

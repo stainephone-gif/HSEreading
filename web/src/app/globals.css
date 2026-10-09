@@ -1,52 +1,147 @@
-:root {
-  --bg: #fbfaf7;
-  --fg: #1d1c1a;
-  --muted: #6b6760;
-  --line: #e2ded6;
-  --accent: #2f5d8a;
-  --accent-fg: #ffffff;
-  --danger: #a33a2b;
-  --card: #ffffff;
-}
+/*
+ * Дизайн-система «Поля»: чёрная пустота, белый текст, один фиолетовый акцент
+ * для главного действия и янтарные искры для выделения. Иерархия — размером и
+ * трекингом, а не жирностью; карточек и теней нет, элементы держатся на отступах.
+ * Отступления от исходной спецификации ради рабочего инструмента отмечены ниже.
+ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161514;
-    --fg: #ece9e3;
-    --muted: #a19c93;
-    --line: #34312d;
-    --accent: #7fa8d1;
-    --accent-fg: #10161c;
-    --danger: #e08a7c;
-    --card: #1f1e1c;
-  }
+:root {
+  color-scheme: dark;
+
+  --color-void: #000000;
+  --color-bone-white: #ffffff;
+  --color-ash-gray: #9a9a9a;
+  --color-silver-mist: #bdbdbd;
+  --color-electric-iris: #8052ff;
+  --color-saffron-spark: #ffb829;
+  --color-deep-verdant: #15846e;
+  --color-danger: #ff6b5e;
+  --color-success: #3ccf9a;
+  /* Отступление: тонкая линия там, где без неё не прочитать данные (таблицы, списки, панель поверх текста). */
+  --hairline: rgb(255 255 255 / 0.12);
+  --wash: rgb(255 255 255 / 0.06);
+
+  --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --text-caption: 12px;
+  --text-nav-label: 14px;
+  --text-body: 18px;
+  --text-heading-2xs: 24px;
+  --text-heading-xs: 27px;
+  --text-subheading: 36px;
+  --text-heading: 48px;
+  --text-heading-lg: 78px;
+
+  --spacing-6: 6px;
+  --spacing-12: 12px;
+  --spacing-18: 18px;
+  --spacing-24: 24px;
+  --spacing-30: 30px;
+  --spacing-36: 36px;
+  --spacing-60: 60px;
+  --spacing-96: 96px;
+
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+  --page-max-width: 1280px;
+
+  /* Старые имена переменных, которыми пользуется разметка. */
+  --bg: var(--color-void);
+  --fg: var(--color-bone-white);
+  --muted: var(--color-ash-gray);
+  --line: var(--hairline);
+  --accent: var(--color-electric-iris);
+  --danger: var(--color-danger);
+  --card: var(--color-void);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  background: var(--color-void);
+}
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  background: var(--color-void);
+  color: var(--color-bone-white);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01" on;
+  font-size: var(--text-body);
+  font-weight: 200;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Заголовки: вес 400, иерархия размером и отрицательным трекингом. */
+h1,
+h2,
+h3 {
+  font-weight: 400;
+}
+
+h1 {
+  font-size: var(--text-heading);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+h2 {
+  font-size: var(--text-heading-2xs);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-size: var(--text-body);
+  line-height: 1.3;
+}
+
+@media (max-width: 640px) {
+  h1 {
+    font-size: var(--text-subheading);
+  }
+}
+
+b,
+strong {
+  font-weight: 600;
 }
 
 a {
-  color: var(--accent);
+  color: var(--color-bone-white);
+  text-decoration-color: var(--color-ash-gray);
+  text-underline-offset: 3px;
 }
 
+a:hover {
+  color: var(--color-saffron-spark);
+  text-decoration-color: currentColor;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-saffron-spark);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgb(128 82 255 / 0.5);
+}
+
+/* Каркас страницы */
+
 .shell {
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 0 16px 48px;
+  padding: 0 24px 96px;
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 0 16px 60px;
+  }
 }
 
 .topbar {
@@ -54,83 +149,80 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 24px;
+  padding: 24px 0;
+  margin-bottom: 36px;
 }
 
 .brand {
-  font-weight: 700;
-  font-size: 1.15rem;
-  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--color-bone-white);
   text-decoration: none;
 }
 
-.muted {
-  color: var(--muted);
+.brand:hover {
+  color: var(--color-bone-white);
 }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
+.nav-label {
+  font-size: var(--text-nav-label);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  color: var(--color-ash-gray);
+}
+
+/* Мелкая янтарная подпись над блоком. */
+.eyebrow,
+.page-label {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-saffron-spark);
+}
+
+.muted {
+  color: var(--color-ash-gray);
+}
+
+.small {
+  font-size: var(--text-nav-label);
+}
+
+.error {
+  color: var(--color-danger);
 }
 
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-18);
 }
 
 .row {
   display: flex;
-  gap: 8px;
+  gap: var(--spacing-12);
   flex-wrap: wrap;
   align-items: center;
 }
 
-input[type="text"],
-input[type="email"] {
-  font: inherit;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--fg);
-  min-width: 0;
+.spacer {
+  flex: 1;
 }
 
-.row input[type="text"],
-.row input[type="email"] {
-  flex: 1 1 240px;
-}
-
-button {
-  font: inherit;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-fg);
-  cursor: pointer;
-}
-
-button.secondary {
-  background: transparent;
-  color: var(--accent);
-}
-
-button.link {
-  border: none;
-  background: none;
-  color: var(--accent);
+/* Раздел страницы: без рамки и фона, держится на отступе. */
+.card {
   padding: 0;
+  margin: 0 0 var(--spacing-60);
 }
 
-.error {
-  color: var(--danger);
+main.card {
+  max-width: 640px;
 }
 
 ul.plain {
@@ -140,8 +232,8 @@ ul.plain {
 }
 
 ul.plain li {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--hairline);
 }
 
 ul.plain li:last-child {
@@ -150,31 +242,150 @@ ul.plain li:last-child {
 
 code.invite {
   word-break: break-all;
-  font-size: 0.9rem;
+  font-size: 15px;
+  color: var(--color-saffron-spark);
 }
 
-input[type="datetime-local"],
-input[type="number"] {
+/* Кнопки: фиолетовая пилюля — главное действие экрана, остальное — призрачные кнопки. */
+
+button {
   font: inherit;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--fg);
+  font-size: var(--text-nav-label);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  padding: 14px 18px;
+  border-radius: var(--radius-3xl);
+  border: 1px solid transparent;
+  background: var(--color-electric-iris);
+  color: var(--color-bone-white);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #8f66ff;
+}
+
+button.secondary {
+  background: transparent;
+  border-color: var(--hairline);
+  color: var(--color-bone-white);
+}
+
+button.secondary:hover:not(:disabled) {
+  background: transparent;
+  border-color: var(--color-bone-white);
+}
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--color-ash-gray);
+}
+
+button.link:hover:not(:disabled) {
+  background: none;
+  color: var(--color-bone-white);
+}
+
+button.small {
+  padding: 8px 14px;
+  font-size: var(--text-caption);
+}
+
+button.link.small {
+  padding: 0;
+}
+
+/* Переключатель в группе (зачёт/незачёт): выбранное — янтарём. */
+button[aria-pressed="true"].secondary {
+  border-color: var(--color-saffron-spark);
+  color: var(--color-saffron-spark);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Формы */
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="datetime-local"],
+textarea,
+select {
+  font: inherit;
+  font-size: 16px;
+  font-weight: 300;
+  color: var(--color-bone-white);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-3xl);
+  padding: 12px 18px;
+  min-width: 0;
+}
+
+textarea {
+  border-radius: 18px;
+  resize: vertical;
+}
+
+select {
+  padding: 10px 14px;
+  border-radius: var(--radius-3xl);
+}
+
+select option {
+  background: #111;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-electric-iris);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-ash-gray);
+}
+
+input[type="number"] {
   width: 120px;
+}
+
+input[type="datetime-local"] {
+  width: auto;
+  max-width: 100%;
 }
 
 input[type="file"] {
   font: inherit;
+  font-size: 15px;
+  color: var(--color-silver-mist);
 }
 
-select {
-  font: inherit;
-  padding: 4px 6px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--fg);
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--color-electric-iris);
+}
+
+.row input[type="text"],
+.row input[type="email"] {
+  flex: 1 1 240px;
+}
+
+label > span:first-child {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ash-gray);
 }
 
 fieldset {
@@ -185,70 +396,133 @@ fieldset {
 
 legend {
   padding: 0;
-  margin-bottom: 4px;
-}
-
-.small {
-  font-size: 0.85rem;
-}
-
-button.small {
-  padding: 4px 10px;
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.page-label {
-  font-size: 0.85rem;
-  color: var(--muted);
+  margin-bottom: 8px;
+  font-size: var(--text-caption);
   font-weight: 600;
-  margin: 16px 0 8px;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--color-ash-gray);
 }
+
+details > summary {
+  cursor: pointer;
+  color: var(--color-silver-mist);
+}
+
+details > summary:hover {
+  color: var(--color-bone-white);
+}
+
+/* Вход: созвездие из треугольников справа от формы. */
+
+.login {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--spacing-60);
+  align-items: center;
+  min-height: 60vh;
+}
+
+.login h1 {
+  font-size: var(--text-heading-lg);
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+.constellation {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 860px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+
+  .login h1 {
+    font-size: var(--text-heading);
+  }
+
+  .constellation {
+    order: -1;
+    max-height: 220px;
+  }
+}
+
+/* Разбивка на абзацы */
 
 .fragment {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 12px 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .fragment-heading .fragment-text {
-  font-weight: 700;
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: -0.01em;
 }
 
 .fragment-excluded {
-  opacity: 0.6;
-  background: transparent;
-  border-style: dashed;
+  opacity: 0.45;
 }
 
 .fragment-meta {
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .fragment-text {
   overflow-wrap: anywhere;
+  font-weight: 300;
 }
 
 button.cut {
   border: none;
   background: none;
-  color: var(--muted);
+  color: var(--color-ash-gray);
   padding: 0 4px;
-  font-size: 0.9rem;
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 button.cut:hover:not(:disabled) {
-  color: var(--danger);
+  background: none;
+  color: var(--color-saffron-spark);
+}
+
+/* Таблицы */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table.summary {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+  font-weight: 300;
+}
+
+table.summary th,
+table.summary td {
+  text-align: left;
+  padding: 12px 12px 12px 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+
+table.summary th {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ash-gray);
+}
+
+table.summary td.num,
+table.summary th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Читалка */
@@ -257,13 +531,12 @@ button.cut:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
 }
 
 .reader-page {
   position: relative;
   background: #fff;
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
   max-width: 100%;
 }
 
@@ -278,13 +551,13 @@ button.cut:hover:not(:disabled) {
 }
 
 .zone-line.debug {
-  outline: 1px dashed rgb(47 93 138 / 0.5);
-  background: rgb(47 93 138 / 0.06);
+  outline: 1px dashed rgb(128 82 255 / 0.7);
+  background: rgb(128 82 255 / 0.06);
 }
 
 .zone-line.debug.read {
-  outline-color: rgb(46 125 50 / 0.7);
-  background: rgb(46 125 50 / 0.1);
+  outline-color: rgb(21 132 110 / 0.9);
+  background: rgb(21 132 110 / 0.1);
 }
 
 .zone-timer {
@@ -292,17 +565,20 @@ button.cut:hover:not(:disabled) {
   right: 0;
   top: 0;
   transform: translateY(-100%);
+  font-family: var(--font-sans);
   font-size: 11px;
+  font-weight: 600;
   line-height: 1;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: #2f5d8a;
+  padding: 3px 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-electric-iris);
   color: #fff;
   white-space: nowrap;
 }
 
-.zone-line.debug.read .zone-timer {
-  background: #2e7d32;
+.zone-line.debug.read .zone-timer,
+.web-par.read .zone-timer.web {
+  background: var(--color-deep-verdant);
 }
 
 .zone-shade {
@@ -310,7 +586,7 @@ button.cut:hover:not(:disabled) {
   left: 0;
   right: 0;
   height: 20vh;
-  background: rgb(0 0 0 / 0.08);
+  background: rgb(0 0 0 / 0.45);
   pointer-events: none;
   z-index: 5;
 }
@@ -360,7 +636,7 @@ button.cut:hover:not(:disabled) {
 }
 
 .textLayer ::selection {
-  background: rgb(47 93 138 / 0.3);
+  background: rgb(128 82 255 / 0.3);
   color: transparent;
 }
 
@@ -381,100 +657,72 @@ button.cut:hover:not(:disabled) {
   top: 0;
 }
 
-table.summary {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-table.summary th,
-table.summary td {
-  text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-table.summary th {
-  font-weight: 600;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
 /* Веб-текст */
 
 .view-switch {
   display: flex;
-  gap: 0;
+  gap: 6px;
   align-self: center;
 }
 
 .view-switch button {
-  border-radius: 0;
-  padding: 6px 14px;
+  padding: 8px 14px;
+  font-size: var(--text-caption);
 }
 
-.view-switch button:first-child {
-  border-radius: 6px 0 0 6px;
-}
-
-.view-switch button:last-child {
-  border-radius: 0 6px 6px 0;
+.view-switch button.secondary {
+  border-color: transparent;
+  color: var(--color-ash-gray);
 }
 
 .web-text {
   align-self: stretch;
   max-width: 680px;
   margin: 0 auto;
-  font-family: Georgia, "PT Serif", "Times New Roman", serif;
-  font-size: 1.125rem;
-  line-height: 1.65;
+  font-size: 19px;
+  /* Отступление: для длинного чтения вес 300 вместо 200 — тонкий белый на чёрном утомляет. */
+  font-weight: 300;
+  line-height: 1.7;
+  color: #ececec;
   hyphens: auto;
   overflow-wrap: break-word;
 }
 
 .web-text h2 {
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  font-size: 1.2rem;
-  line-height: 1.3;
-  margin: 1.6em 0 0.6em;
+  font-size: var(--text-heading-2xs);
+  letter-spacing: -0.02em;
+  color: var(--color-bone-white);
+  margin: 1.8em 0 0.6em;
 }
 
 .web-par,
 .zone-line {
   /* Место под липкую строку заданий при прокрутке к абзацу. */
-  scroll-margin-top: 72px;
+  scroll-margin-top: 84px;
 }
 
 .web-par {
   position: relative;
   /* Справа место под маркеры заданий. */
-  padding-right: 36px;
+  padding-right: 40px;
 }
 
 .web-par p {
-  margin: 0 0 1em;
+  margin: 0 0 1.1em;
 }
 
 .web-par.debug {
-  outline: 1px dashed rgb(47 93 138 / 0.5);
-  outline-offset: 2px;
+  outline: 1px dashed rgb(128 82 255 / 0.6);
+  outline-offset: 4px;
 }
 
 .web-par.debug.read {
-  outline-color: rgb(46 125 50 / 0.7);
+  outline-color: rgb(21 132 110 / 0.9);
 }
 
 .web-markers {
   position: absolute;
-  top: 2px;
+  top: 4px;
   right: 0;
   display: flex;
   flex-direction: column;
@@ -486,36 +734,31 @@ table.summary th {
 }
 
 .zone-timer.web {
-  right: 36px;
-  transform: translateY(-100%);
-  font-family: system-ui, sans-serif;
-}
-
-.web-par.read .zone-timer.web {
-  background: #2e7d32;
+  right: 40px;
 }
 
 .sentence-inline {
-  padding: 0 1px;
-  border-radius: 2px;
-  -webkit-tap-highlight-color: transparent;
-  background: rgb(47 93 138 / 0.12);
+  padding: 1px 2px;
+  border-radius: 4px;
+  background: rgb(128 82 255 / 0.18);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 .sentence-inline:hover {
-  background: rgb(47 93 138 / 0.25);
+  background: rgb(128 82 255 / 0.32);
 }
 
 .sentence-inline.picked {
-  background: rgb(230 160 0 / 0.4);
+  background: var(--color-saffron-spark);
+  color: #000;
 }
 
 @media (max-width: 640px) {
   .web-text {
-    font-size: 1.0625rem;
+    font-size: 18px;
   }
 }
 
@@ -528,24 +771,33 @@ table.summary th {
   align-self: stretch;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 6px 18px;
   align-items: center;
-  padding: 8px 12px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 14px 0;
+  background: var(--color-void);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.task-bar button.link {
+  color: var(--color-saffron-spark);
+}
+
+.task-bar button.link:disabled {
+  color: var(--color-ash-gray);
+  opacity: 1;
 }
 
 .task-marker {
   position: absolute;
   z-index: 3;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border-radius: 50%;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  text-transform: none;
 }
 
 .task-marker.new {
@@ -564,6 +816,7 @@ table.summary th {
   }
 }
 
+/* Отступление: панель лежит поверх текста, поэтому у неё есть тонкая рамка. */
 .task-panel {
   position: fixed;
   z-index: 10;
@@ -574,28 +827,29 @@ table.summary th {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  gap: 12px;
+  padding: 24px;
+  background: var(--color-void);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-3xl);
 }
 
 @media (min-width: 1100px) {
   .task-panel {
     left: auto;
-    right: 16px;
-    top: 80px;
+    right: 24px;
+    top: 96px;
     bottom: auto;
-    width: 340px;
-    max-height: calc(100vh - 100px);
+    width: 360px;
+    max-height: calc(100vh - 120px);
   }
 }
 
 .task-prompt {
   margin: 0;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
   white-space: pre-wrap;
 }
 
@@ -604,24 +858,27 @@ table.summary th {
   padding-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
-.task-panel textarea {
-  font: inherit;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--fg);
-  resize: vertical;
+.task-list button.link {
+  color: var(--color-bone-white);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 300;
+  font-size: 16px;
+  text-align: left;
+}
+
+.choice {
+  font-weight: 300;
 }
 
 blockquote.picked {
   margin: 0;
-  padding: 6px 10px;
-  border-left: 3px solid var(--accent);
-  background: var(--bg);
+  padding: 6px 0 6px 14px;
+  border-left: 2px solid var(--color-saffron-spark);
+  font-weight: 300;
 }
 
 .sentence-pick {
@@ -630,19 +887,80 @@ blockquote.picked {
   padding: 0;
   border: none;
   border-radius: 2px;
-  background: rgb(47 93 138 / 0.12);
+  background: rgb(128 82 255 / 0.18);
   cursor: pointer;
 }
 
-.sentence-pick:hover {
-  background: rgb(47 93 138 / 0.25);
+.sentence-pick:hover:not(:disabled) {
+  background: rgb(128 82 255 / 0.32);
 }
 
 .sentence-pick.picked {
-  background: rgb(230 160 0 / 0.4);
+  background: rgb(255 184 41 / 0.5);
 }
 
-input[type="datetime-local"] {
-  width: auto;
-  max-width: 100%;
+/* Результаты */
+
+.result-cell {
+  font-weight: 600;
+}
+
+.result-pass {
+  color: var(--color-success);
+}
+
+.result-fail {
+  color: var(--color-danger);
+}
+
+.result-pending {
+  color: var(--color-saffron-spark);
+}
+
+.result-none {
+  color: var(--color-ash-gray);
+  font-weight: 300;
+}
+
+.heat {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 60px;
+  gap: 6px 14px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 300;
+}
+
+.heat-bar {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--wash);
+  overflow: hidden;
+}
+
+.heat-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--color-electric-iris);
+}
+
+.heat-text {
+  grid-column: 2 / 3;
+  color: var(--color-silver-mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 60px;
+}
+
+.stat-value {
+  font-size: var(--text-heading);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 1;
 }

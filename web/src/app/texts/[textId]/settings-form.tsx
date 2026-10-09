@@ -53,7 +53,7 @@ export function SettingsForm({
         </label>
       </fieldset>
       <div className="row">
-        <button type="submit" disabled={pending}>
+        <button type="submit" className="secondary" disabled={pending}>
           Сохранить
         </button>
         {state.error && <span className="error">{state.error}</span>}

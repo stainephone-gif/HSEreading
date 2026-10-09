@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Constellation } from "@/components/constellation";
 import { getCurrentUser } from "@/lib/session";
 import { safeNextPath } from "@/lib/tokens";
 import { LoginForm } from "./login-form";
@@ -8,12 +9,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (await getCurrentUser()) redirect(next ?? "/");
 
   return (
-    <main className="card stack">
-      <h1 style={{ margin: 0 }}>Вход</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        Пароль не нужен: пришлём на почту одноразовую ссылку.
-      </p>
-      <LoginForm next={next} />
+    <main className="login">
+      <div className="stack" style={{ gap: 24 }}>
+        <span className="eyebrow">Совместное чтение</span>
+        <h1>Читать, чтобы найти.</h1>
+        <p className="muted" style={{ margin: 0, maxWidth: 480 }}>
+          Задания спрятаны в тексте и открываются по ходу чтения. Пароль не нужен: пришлём на почту одноразовую ссылку
+          для входа.
+        </p>
+        <LoginForm next={next} />
+      </div>
+      <Constellation className="constellation" />
     </main>
   );
 }

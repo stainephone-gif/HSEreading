@@ -25,9 +25,17 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
       <p style={{ margin: 0 }}>
         Вы входите как <b>{user.email}</b>.
       </p>
-      <form action={acceptInviteAction}>
+      <form action={acceptInviteAction} className="stack">
         <input type="hidden" name="code" value={code} />
-        <button type="submit">Присоединиться к курсу</button>
+        {!user.name && (
+          <label className="stack" style={{ gap: 6 }}>
+            <span>Имя и фамилия</span>
+            <input type="text" name="name" required maxLength={120} placeholder="Как вас увидит преподаватель" />
+          </label>
+        )}
+        <div>
+          <button type="submit">Присоединиться к курсу</button>
+        </div>
       </form>
     </main>
   );

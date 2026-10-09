@@ -74,7 +74,8 @@ export function TeacherTaskList({ textId, tasks }: { textId: string; tasks: Teac
                         <span className="row">
                           <button
                             type="button"
-                            className={a.grade === "PASS" ? "small" : "secondary small"}
+                            className="secondary small"
+                            aria-pressed={a.grade === "PASS"}
                             disabled={pending}
                             onClick={() =>
                               act(() => gradeAction(textId, t.id, a.userId, a.grade === "PASS" ? null : "PASS"))
@@ -84,7 +85,8 @@ export function TeacherTaskList({ textId, tasks }: { textId: string; tasks: Teac
                           </button>
                           <button
                             type="button"
-                            className={a.grade === "FAIL" ? "small" : "secondary small"}
+                            className="secondary small"
+                            aria-pressed={a.grade === "FAIL"}
                             disabled={pending}
                             onClick={() =>
                               act(() => gradeAction(textId, t.id, a.userId, a.grade === "FAIL" ? null : "FAIL"))
