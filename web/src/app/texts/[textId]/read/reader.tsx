@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { sentenceRects } from "@/lib/geometry";
 import type { Sentence } from "@/lib/pdf-service";
 import type { ReaderData, StudentTasks } from "@/lib/reader-types";
+import { FinishCard, FoundToast, foundMessage, ReadingMap, useHints, useReachedEnd } from "./encouragement";
 import { TaskBar, TaskList, TaskPanel } from "./task-panel";
 
 // Зона чтения: средняя полоса экрана, по 20% высоты сверху и снизу не считаются.
@@ -30,6 +31,15 @@ export type ReaderBackend = {
 
 // Маркер задания: новое (ещё не открыто), открытое без ответа, с ответом.
 type MarkerState = "new" | "open" | "done";
+// Текст книги нельзя скопировать: выделение отключено стилями, а копирование,
+// контекстное меню и перетаскивание блокируются. Поля ответа работают как обычно.
+// Полной защиты нет (снимок экрана никто не запретит), но копировать «в лоб» нельзя.
+function blockCopy(e: React.SyntheticEvent) {
+  const target = e.target as HTMLElement;
+  if (target.closest("input, textarea")) return;
+  e.preventDefault();
+}
+
 type Marker = { taskId: string; state: MarkerState };
 
 const MARKER: Record<MarkerState, { mark: string; label: string; title: string }> = {
@@ -146,7 +156,21 @@ export function Reader({
   const [width, setWidth] = useState(0);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<StudentTasks | null>(data.tasks);
+  const [tasks, setTasksState] = useState<StudentTasks | null>(data.tasks);
+  // Радость находки: новое найденное задание — короткое сообщение.
+  const foundRef = useRef(new Set(data.tasks?.found.map((t) => t.id) ?? []));
+  const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
+  const setTasks = useCallback((next: StudentTasks) => {
+    const fresh = next.found.filter((t) => !foundRef.current.has(t.id));
+    foundRef.current = new Set(next.found.map((t) => t.id));
+    if (fresh.length) setToast({ text: foundMessage(next.found.length, next.total), key: Date.now() });
+    setTasksState(next);
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
   // Что открыто в панели: список найденных или конкретное задание.
   const [panel, setPanel] = useState<"list" | string | null>(null);
   const [selectedSentence, setSelectedSentence] = useState<number | null>(null);
@@ -203,6 +227,25 @@ export function Reader({
   const leftBehindId = useLeftBehind(unanswered, skipReminder);
   const leftBehind = panel === "list" ? null : (unanswered.find((t) => t.id === leftBehindId) ?? null);
 
+  // Финиш: дочитал до конца — открытка с итогом и подсказками.
+  const reachedEnd = useReachedEnd(Boolean(tasks && tasks.total > 0));
+  const [summary, setSummary] = useState<"auto" | "open" | "closed">("auto");
+  const showSummary = Boolean(tasks) && (summary === "open" || (summary === "auto" && reachedEnd && !panel));
+  const [hints, addHint] = useHints(data.textId);
+  const hiddenFragments = useMemo(() => {
+    if (!data.taskFragments || !tasks) return null;
+    const found = new Set(tasks.found.map((t) => t.fragmentId));
+    return [...new Set(data.taskFragments)].filter((f) => !found.has(f));
+  }, [data.taskFragments, tasks]);
+  const jumpTo = (fragmentId: string) =>
+    document
+      .querySelector(`[data-fid="${CSS.escape(fragmentId)}"]`)
+      ?.scrollIntoView({ block: "start", behavior: "smooth" });
+  const jumpToPage = (page: number) => {
+    const f = data.fragments.find((x) => (x.lines[0]?.page ?? 0) + 1 >= page);
+    if (f) jumpTo(f.id);
+  };
+
   const openStudentTask = tasks?.found.find((t) => t.id === panel) ?? null;
 
   // Задание на выбор предложения: абзац прокручивается наверх, чтобы его не
@@ -258,13 +301,38 @@ export function Reader({
   }, [backend, view]);
 
   return (
-    <div ref={containerRef} className="reader">
+    <div
+      ref={containerRef}
+      className="reader no-copy"
+      onCopy={blockCopy}
+      onCut={blockCopy}
+      onContextMenu={blockCopy}
+      onDragStart={blockCopy}
+    >
       {tasks && (
         <TaskBar
           tasks={tasks}
           unanswered={unanswered.length}
           deadlineLabel={deadlineLabel}
           onOpenList={() => setPanel("list")}
+          onSummary={reachedEnd ? () => setSummary("open") : undefined}
+        >
+          <ReadingMap data={data} readIds={zone.readIds} onJump={jumpTo} />
+        </TaskBar>
+      )}
+      {toast && <FoundToast key={toast.key} text={toast.text} />}
+      {tasks && showSummary && !leftBehind && (
+        <FinishCard
+          data={data}
+          tasks={tasks}
+          hidden={hiddenFragments}
+          hints={hints}
+          onHint={addHint}
+          onJumpPage={(page) => {
+            setSummary("closed");
+            jumpToPage(page);
+          }}
+          onClose={() => setSummary("closed")}
         />
       )}
       {leftBehind && (
