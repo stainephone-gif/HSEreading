@@ -30,7 +30,12 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   line-height: 1.5;
 }
 
@@ -243,4 +248,156 @@ button.cut {
 
 button.cut:hover:not(:disabled) {
   color: var(--danger);
+}
+
+/* Читалка */
+
+.reader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.reader-page {
+  position: relative;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.15);
+  max-width: 100%;
+}
+
+.reader-page canvas {
+  display: block;
+}
+
+/* Строки абзацев: прозрачные прямоугольники, по которым считается зона чтения. */
+.zone-line {
+  position: absolute;
+  pointer-events: none;
+}
+
+.zone-line.debug {
+  outline: 1px dashed rgb(47 93 138 / 0.5);
+  background: rgb(47 93 138 / 0.06);
+}
+
+.zone-line.debug.read {
+  outline-color: rgb(46 125 50 / 0.7);
+  background: rgb(46 125 50 / 0.1);
+}
+
+.zone-timer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translateY(-100%);
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: #2f5d8a;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.zone-line.debug.read .zone-timer {
+  background: #2e7d32;
+}
+
+.zone-shade {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 20vh;
+  background: rgb(0 0 0 / 0.08);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.zone-shade.top {
+  top: 0;
+}
+
+.zone-shade.bottom {
+  bottom: 0;
+}
+
+/* Текстовый слой PDF.js: прозрачный текст поверх картинки страницы для выделения. */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  transform-origin: 0 0;
+  z-index: 1;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer ::selection {
+  background: rgb(47 93 138 / 0.3);
+  color: transparent;
+}
+
+.textLayer br::selection {
+  background: transparent;
+}
+
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+.textLayer.selecting .endOfContent {
+  top: 0;
+}
+
+table.summary {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.summary th,
+table.summary td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+table.summary th {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
 }

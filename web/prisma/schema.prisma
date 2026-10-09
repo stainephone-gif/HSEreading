@@ -16,10 +16,12 @@ model User {
   isTeacher Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  sessions     Session[]
-  memberships  CourseMember[]
-  ownedCourses Course[]       @relation("CourseOwner")
-  texts        Text[]
+  sessions       Session[]
+  memberships    CourseMember[]
+  ownedCourses   Course[]        @relation("CourseOwner")
+  texts          Text[]
+  readingCursors ReadingCursor[]
+  dwells         Dwell[]
 }
 
 // Одноразовая ссылка для входа. В базе лежит только хэш токена.
@@ -119,9 +121,12 @@ model Text {
   wordsPerMinute Int         @default(200)
   uploadedById   String
   uploadedBy     User        @relation(fields: [uploadedById], references: [id])
+  // Пока текст не опубликован, студенты его не видят, а преподаватель правит разбивку.
+  publishedAt    DateTime?
   createdAt      DateTime    @default(now())
 
   fragments Fragment[]
+  readers   ReadingCursor[]
 
   @@index([courseId])
 }
@@ -148,5 +153,36 @@ model Fragment {
   sentences     Json
   excludeReason String?
 
+  dwells Dwell[]
+
   @@index([textId, position])
+}
+
+// Где студент в тексте: время последнего отчёта читалки. По нему сервер
+// ограничивает засчитанное время реально прошедшим.
+model ReadingCursor {
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  textId        String
+  text          Text     @relation(fields: [textId], references: [id], onDelete: Cascade)
+  firstOpenedAt DateTime @default(now())
+  lastBeatAt    DateTime @default(now())
+  // Сколько времени в читалке хотя бы один абзац был в зоне чтения.
+  activeMs      Int      @default(0)
+
+  @@id([userId, textId])
+}
+
+// Сколько времени фрагмент провёл в зоне чтения у студента.
+model Dwell {
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fragmentId String
+  fragment   Fragment  @relation(fields: [fragmentId], references: [id], onDelete: Cascade)
+  ms         Int       @default(0)
+  // Когда набралась половина расчётного времени чтения: с этого момента фрагмент дочитан.
+  readAt     DateTime?
+
+  @@id([userId, fragmentId])
+  @@index([fragmentId])
 }

@@ -26,10 +26,14 @@ describe("правка фрагментов", () => {
       [0, 13],
       [14, 34],
     ]);
-    const b = fragment("середине. Третья.", [
-      [0, 9],
-      [10, 17],
-    ], 1);
+    const b = fragment(
+      "середине. Третья.",
+      [
+        [0, 9],
+        [10, 17],
+      ],
+      1,
+    );
     const m = mergeFragments(a, b);
     expect(m.content).toBe("Первая фраза. Вторая обрывается на середине. Третья.");
     expect(m.sentences.map(([s, e]) => m.content.slice(s, e))).toEqual([

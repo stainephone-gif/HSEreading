@@ -14,7 +14,16 @@ export type FragmentView = {
   excludeReason: string | null;
 };
 
-export function FragmentList({ textId, fragments }: { textId: string; fragments: FragmentView[] }) {
+export function FragmentList({
+  textId,
+  fragments,
+  locked,
+}: {
+  textId: string;
+  fragments: FragmentView[];
+  // Опубликованный текст правке не подлежит.
+  locked: boolean;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +45,7 @@ export function FragmentList({ textId, fragments }: { textId: string; fragments:
             {pageHeader}
             <article className={`fragment fragment-${f.kind.toLowerCase()}`}>
               <div className="fragment-text">
-                {f.kind === "BODY" && f.sentences.length > 1 ? (
+                {f.kind === "BODY" && f.sentences.length > 1 && !locked ? (
                   <Sentences f={f} disabled={pending} onSplit={(k) => act(() => splitAction(textId, f.id, k))} />
                 ) : (
                   f.content
@@ -53,26 +62,30 @@ export function FragmentList({ textId, fragments }: { textId: string; fragments:
                 )}
                 {f.pages.length > 1 && <span className="muted small">стр. {f.pages.map((p) => p + 1).join("–")}</span>}
                 <span className="spacer" />
-                <select
-                  value={f.kind}
-                  disabled={pending}
-                  aria-label="Тип фрагмента"
-                  onChange={(e) => act(() => setKindAction(textId, f.id, e.target.value))}
-                >
-                  <option value="BODY">Абзац</option>
-                  <option value="HEADING">Заголовок</option>
-                  <option value="EXCLUDED">Исключить</option>
-                </select>
-                {i < fragments.length - 1 && (
-                  <button
-                    type="button"
-                    className="secondary small"
-                    disabled={pending}
-                    onClick={() => act(() => mergeAction(textId, f.id))}
-                    title="Склеить со следующим фрагментом (колонтитулы между ними пропускаются)"
-                  >
-                    Склеить со следующим
-                  </button>
+                {!locked && (
+                  <>
+                    <select
+                      value={f.kind}
+                      disabled={pending}
+                      aria-label="Тип фрагмента"
+                      onChange={(e) => act(() => setKindAction(textId, f.id, e.target.value))}
+                    >
+                      <option value="BODY">Абзац</option>
+                      <option value="HEADING">Заголовок</option>
+                      <option value="EXCLUDED">Исключить</option>
+                    </select>
+                    {i < fragments.length - 1 && (
+                      <button
+                        type="button"
+                        className="secondary small"
+                        disabled={pending}
+                        onClick={() => act(() => mergeAction(textId, f.id))}
+                        title="Склеить со следующим фрагментом (колонтитулы между ними пропускаются)"
+                      >
+                        Склеить со следующим
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </article>

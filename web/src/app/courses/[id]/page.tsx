@@ -22,14 +22,18 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
 
       <section className="card stack">
         <h2 style={{ margin: 0 }}>Тексты</h2>
-        {!isTeacher ? (
+        {texts.length === 0 ? (
           <p className="muted" style={{ margin: 0 }}>
-            Тексты появятся здесь, когда преподаватель их опубликует.
+            {isTeacher ? "Текстов пока нет." : "Тексты появятся здесь, когда преподаватель их опубликует."}
           </p>
-        ) : texts.length === 0 ? (
-          <p className="muted" style={{ margin: 0 }}>
-            Текстов пока нет.
-          </p>
+        ) : !isTeacher ? (
+          <ul className="plain">
+            {texts.map((t) => (
+              <li key={t.id}>
+                <Link href={`/texts/${t.id}/read`}>{t.title}</Link>
+              </li>
+            ))}
+          </ul>
         ) : (
           <ul className="plain">
             {texts.map((t) => (
@@ -38,7 +42,7 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
                 <span className="muted">
                   ·{" "}
                   {t.status === "READY"
-                    ? `абзацев: ${t._count.fragments}`
+                    ? `абзацев: ${t._count.fragments} · ${t.publishedAt ? "опубликован" : "черновик"}`
                     : t.status === "FAILED"
                       ? "ошибка разбора"
                       : "разбирается"}

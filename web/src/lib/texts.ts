@@ -87,6 +87,7 @@ async function parseText(textId: string, bytes: Uint8Array, fileName: string): P
 
 export async function reparseText(textId: string, userId: string) {
   const text = await requireTextTeacher(textId, userId);
+  if (text.publishedAt) throw new UploadError(PUBLISHED_LOCK);
   await db.text.update({ where: { id: textId }, data: { status: TextStatus.PROCESSING, error: null } });
   await parseText(textId, await loadFile(text.pdfKey), text.pdfName);
 }
@@ -98,12 +99,28 @@ async function requireTextTeacher(textId: string, userId: string) {
   return text;
 }
 
+const PUBLISHED_LOCK = "Текст опубликован. Чтобы править разбивку, снимите его с публикации.";
+
+export async function setPublished(textId: string, userId: string, published: boolean) {
+  const text = await requireTextTeacher(textId, userId);
+  if (published) {
+    if (text.status !== TextStatus.READY) throw new UploadError("Опубликовать можно только разобранный текст.");
+    const body = await db.fragment.count({ where: { textId, kind: FragmentKind.BODY } });
+    if (body === 0) throw new UploadError("В тексте нет ни одного абзаца.");
+  }
+  await db.text.update({
+    where: { id: textId },
+    data: { publishedAt: published ? (text.publishedAt ?? new Date()) : null },
+  });
+}
+
 export async function listTexts(courseId: string, userId: string) {
   const membership = await getMembership(courseId, userId);
-  // Студентам тексты станут видны после публикации — она появится вместе с заданиями.
-  if (membership?.role !== "TEACHER") return [];
+  if (!membership) return [];
+  const isTeacher = membership.role === "TEACHER";
   return db.text.findMany({
-    where: { courseId },
+    // Студент видит только опубликованные тексты.
+    where: isTeacher ? { courseId } : { courseId, status: TextStatus.READY, publishedAt: { not: null } },
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { fragments: { where: { kind: FragmentKind.BODY } } } } },
   });
@@ -120,10 +137,12 @@ export async function getTextForTeacher(textId: string, userId: string) {
   return text;
 }
 
-// Открыть исходный PDF может любой участник курса.
+// Исходный PDF: преподавателю всегда, студенту — после публикации.
 export async function getTextPdfForMember(textId: string, userId: string) {
   const text = await db.text.findUnique({ where: { id: textId } });
-  if (!text?.pdfKey || !(await getMembership(text.courseId, userId))) return null;
+  if (!text?.pdfKey) return null;
+  const membership = await getMembership(text.courseId, userId);
+  if (!membership || (membership.role !== "TEACHER" && !text.publishedAt)) return null;
   return { name: text.pdfName, data: await loadFile(text.pdfKey) };
 }
 
@@ -136,9 +155,13 @@ export async function updateTextSettings(
   const title = settings.title.trim();
   if (!title) throw new UploadError("Название не может быть пустым.");
   const wpm = Math.round(settings.wordsPerMinute);
-  if (!Number.isFinite(wpm) || wpm < 50 || wpm > 600) throw new UploadError("Норма чтения: от 50 до 600 слов в минуту.");
+  if (!Number.isFinite(wpm) || wpm < 50 || wpm > 600)
+    throw new UploadError("Норма чтения: от 50 до 600 слов в минуту.");
   const displayMode = settings.displayMode === "WEB" ? DisplayMode.WEB : DisplayMode.PDF;
-  await db.text.update({ where: { id: textId }, data: { title: title.slice(0, 300), wordsPerMinute: wpm, displayMode } });
+  await db.text.update({
+    where: { id: textId },
+    data: { title: title.slice(0, 300), wordsPerMinute: wpm, displayMode },
+  });
 }
 
 // Правка разбивки
@@ -158,6 +181,8 @@ async function requireFragmentTeacher(fragmentId: string, userId: string) {
   const fragment = await db.fragment.findUnique({ where: { id: fragmentId }, include: { text: true } });
   if (!fragment) throw new AccessError("Фрагмент не найден.");
   await requireCourseTeacher(fragment.text.courseId, userId);
+  // Правка разбивки сбила бы накопленное студентами время на абзацах.
+  if (fragment.text.publishedAt) throw new UploadError(PUBLISHED_LOCK);
   return fragment;
 }
 

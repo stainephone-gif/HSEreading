@@ -2,7 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
-import { mergeWithNext, reparseText, setFragmentKind, splitAtSentence, updateTextSettings, UploadError } from "@/lib/texts";
+import {
+  mergeWithNext,
+  reparseText,
+  setFragmentKind,
+  setPublished,
+  splitAtSentence,
+  updateTextSettings,
+  UploadError,
+} from "@/lib/texts";
 
 export type ActionResult = { error?: string };
 
@@ -28,6 +36,10 @@ export async function splitAction(textId: string, fragmentId: string, sentenceIn
 
 export async function setKindAction(textId: string, fragmentId: string, kind: string) {
   return run(textId, (userId) => setFragmentKind(fragmentId, userId, kind));
+}
+
+export async function publishAction(textId: string, published: boolean) {
+  return run(textId, (userId) => setPublished(textId, userId, published));
 }
 
 export async function reparseAction(textId: string) {
