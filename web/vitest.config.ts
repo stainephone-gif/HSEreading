@@ -9,5 +9,6 @@ export default defineConfig(({ mode }) => ({
     env: loadEnv(mode, process.cwd(), ""),
     // Интеграционные тесты делят одну базу, поэтому файлы идут по очереди.
     fileParallelism: false,
+    include: ["tests/**/*.test.ts"],
   },
 }));

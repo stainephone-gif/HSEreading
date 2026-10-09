@@ -19,6 +19,7 @@ model User {
   sessions     Session[]
   memberships  CourseMember[]
   ownedCourses Course[]       @relation("CourseOwner")
+  texts        Text[]
 }
 
 // Одноразовая ссылка для входа. В базе лежит только хэш токена.
@@ -55,6 +56,7 @@ model Course {
 
   members CourseMember[]
   invites Invite[]
+  texts   Text[]
 }
 
 enum CourseRole {
@@ -83,4 +85,68 @@ model Invite {
   role      CourseRole @default(STUDENT)
   revokedAt DateTime?
   createdAt DateTime   @default(now())
+}
+
+enum TextStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum DisplayMode {
+  PDF
+  WEB
+}
+
+// Текст для чтения: исходный PDF и его разбивка на фрагменты.
+model Text {
+  id             String      @id @default(cuid())
+  courseId       String
+  course         Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title          String
+  status         TextStatus  @default(PROCESSING)
+  // Сообщение для преподавателя, если разбор не удался.
+  error          String?
+  // Ключ файла в хранилище.
+  pdfKey         String
+  pdfName        String
+  pageCount      Int         @default(0)
+  // Размеры страниц в пунктах: [{ width, height }].
+  pages          Json        @default("[]")
+  language       String?
+  displayMode    DisplayMode @default(PDF)
+  // Норма чтения: от неё считается время, после которого открывается маркер.
+  wordsPerMinute Int         @default(200)
+  uploadedById   String
+  uploadedBy     User        @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime    @default(now())
+
+  fragments Fragment[]
+
+  @@index([courseId])
+}
+
+enum FragmentKind {
+  BODY
+  HEADING
+  EXCLUDED
+}
+
+// Абзац текста. На абзацы опираются задания, пасхалки и учёт дочитывания.
+model Fragment {
+  id            String       @id @default(cuid())
+  textId        String
+  text          Text         @relation(fields: [textId], references: [id], onDelete: Cascade)
+  position      Int
+  kind          FragmentKind
+  content       String
+  language      String
+  wordCount     Int
+  // Строки в PDF: [{ page, bbox: [x0, y0, x1, y1], start, end }], start/end — смещения в content.
+  lines         Json
+  // Предложения: [[start, end], ...] по смещениям в content.
+  sentences     Json
+  excludeReason String?
+
+  @@index([textId, position])
 }

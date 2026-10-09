@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCourseForMember } from "@/lib/courses";
 import { env } from "@/lib/env";
 import { requireUser } from "@/lib/session";
+import { listTexts } from "@/lib/texts";
 import { regenerateInviteAction } from "./actions";
 
 export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,14 +14,44 @@ export default async function CoursePage({ params }: { params: Promise<{ id: str
   const { course, membership } = data;
   const isTeacher = membership.role === "TEACHER";
   const invite = course.invites[0];
+  const texts = await listTexts(course.id, user.id);
 
   return (
     <main className="stack">
       <h1 style={{ margin: 0 }}>{course.title}</h1>
 
-      <section className="card">
-        <h2 style={{ marginTop: 0 }}>Тексты</h2>
-        <p className="muted">Загрузка текстов появится на следующем этапе.</p>
+      <section className="card stack">
+        <h2 style={{ margin: 0 }}>Тексты</h2>
+        {!isTeacher ? (
+          <p className="muted" style={{ margin: 0 }}>
+            Тексты появятся здесь, когда преподаватель их опубликует.
+          </p>
+        ) : texts.length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>
+            Текстов пока нет.
+          </p>
+        ) : (
+          <ul className="plain">
+            {texts.map((t) => (
+              <li key={t.id}>
+                <Link href={`/texts/${t.id}`}>{t.title}</Link>{" "}
+                <span className="muted">
+                  ·{" "}
+                  {t.status === "READY"
+                    ? `абзацев: ${t._count.fragments}`
+                    : t.status === "FAILED"
+                      ? "ошибка разбора"
+                      : "разбирается"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {isTeacher && (
+          <div>
+            <Link href={`/courses/${course.id}/texts/new`}>+ Загрузить PDF</Link>
+          </div>
+        )}
       </section>
 
       {isTeacher && (

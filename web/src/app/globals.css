@@ -95,6 +95,10 @@ input[type="email"] {
   background: var(--bg);
   color: var(--fg);
   min-width: 0;
+}
+
+.row input[type="text"],
+.row input[type="email"] {
   flex: 1 1 240px;
 }
 
@@ -142,4 +146,101 @@ ul.plain li:last-child {
 code.invite {
   word-break: break-all;
   font-size: 0.9rem;
+}
+
+input[type="number"] {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  width: 120px;
+}
+
+input[type="file"] {
+  font: inherit;
+}
+
+select {
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+button.small {
+  padding: 4px 10px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.page-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 16px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fragment {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.fragment-heading .fragment-text {
+  font-weight: 700;
+}
+
+.fragment-excluded {
+  opacity: 0.6;
+  background: transparent;
+  border-style: dashed;
+}
+
+.fragment-meta {
+  margin-top: 8px;
+}
+
+.fragment-text {
+  overflow-wrap: anywhere;
+}
+
+button.cut {
+  border: none;
+  background: none;
+  color: var(--muted);
+  padding: 0 4px;
+  font-size: 0.9rem;
+}
+
+button.cut:hover:not(:disabled) {
+  color: var(--danger);
 }
