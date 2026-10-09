@@ -1,7 +1,7 @@
 "use client";
 
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { sentenceRects } from "@/lib/geometry";
 import type { Sentence } from "@/lib/pdf-service";
 import type { ReaderData } from "@/lib/reading";
@@ -19,7 +19,36 @@ const MAX_PAGE_WIDTH = 900;
 const loadPdfjs = () => import("pdfjs-dist/legacy/build/pdf.mjs");
 
 type Marker = { taskId: string; isNew: boolean };
-type SelectionOverlay = { fragmentId: string; rects: { index: number; rects: ReturnType<typeof sentenceRects> }[] };
+type SelectionOverlay = {
+  fragmentId: string;
+  sentences: Sentence[];
+  rects: { index: number; rects: ReturnType<typeof sentenceRects> }[];
+};
+
+type View = "pdf" | "web";
+const VIEW_KEY = "polya:view";
+// Уже этого PDF-страница не читается: по умолчанию показываем текст.
+const NARROW_PX = 640;
+
+function storedView(): View | null {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    return v === "pdf" || v === "web" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+const noSubscribe = () => () => {};
+
+// Вид по умолчанию известен только в браузере: ширина экрана и прошлый выбор.
+function useDefaultView(displayMode: ReaderData["displayMode"]): View | null {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => (displayMode === "WEB" ? "web" : (storedView() ?? (window.innerWidth < NARROW_PX ? "web" : "pdf"))),
+    () => null,
+  );
+}
 
 export function Reader({
   data,
@@ -41,6 +70,17 @@ export function Reader({
   // Задания, которые студент уже видел: новые маркеры мигают.
   const [seen, setSeen] = useState(() => new Set(data.tasks?.found.map((t) => t.id) ?? []));
   const zone = useReadingZone(data, (body) => body.tasks && setTasks(body.tasks));
+  const defaultView = useDefaultView(data.displayMode);
+  const [chosenView, setChosenView] = useState<View | null>(null);
+  const view = chosenView ?? defaultView;
+  const chooseView = (v: View) => {
+    setChosenView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // Без хранилища выбор просто не запомнится.
+    }
+  };
 
   const openTask = useCallback((id: string) => {
     setPanel(id);
@@ -58,12 +98,21 @@ export function Reader({
   }, [tasks, data.previewTasks, zone.readIds, seen]);
 
   const openStudentTask = tasks?.found.find((t) => t.id === panel) ?? null;
+
+  // Задание на выбор предложения: абзац прокручивается наверх, чтобы его не
+  // закрыла панель ответа (на телефоне она снизу).
+  const pickFragment = openStudentTask?.format === "SELECTION" ? openStudentTask.fragmentId : null;
+  useEffect(() => {
+    if (!pickFragment) return;
+    document.querySelector(`[data-fid="${pickFragment}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [pickFragment, view]);
   const openPreviewTask = !tasks ? (data.previewTasks.find((t) => t.id === panel) ?? null) : null;
 
   const selection: SelectionOverlay | null =
     openStudentTask?.selection && !tasks?.closed
       ? {
           fragmentId: openStudentTask.fragmentId,
+          sentences: openStudentTask.selection.sentences,
           rects: openStudentTask.selection.sentences.map((range: Sentence, index) => ({
             index,
             rects: sentenceRects(openStudentTask.selection!.lines, range),
@@ -80,6 +129,7 @@ export function Reader({
   }, []);
 
   useEffect(() => {
+    if (view !== "pdf") return;
     let cancelled = false;
     let loading: PDFDocumentLoadingTask | null = null;
     (async () => {
@@ -97,12 +147,23 @@ export function Reader({
     return () => {
       cancelled = true;
       loading?.destroy();
+      setDoc(null);
     };
-  }, [pdfUrl]);
+  }, [pdfUrl, view]);
 
   return (
     <div ref={containerRef} className="reader">
       {tasks && <TaskBar tasks={tasks} deadlineLabel={deadlineLabel} onOpenList={() => setPanel("list")} />}
+      {data.displayMode === "PDF" && view && (
+        <div className="view-switch" role="group" aria-label="Вид текста">
+          <button type="button" className={view === "web" ? undefined : "secondary"} onClick={() => chooseView("web")}>
+            Текст
+          </button>
+          <button type="button" className={view === "pdf" ? undefined : "secondary"} onClick={() => chooseView("pdf")}>
+            Страницы PDF
+          </button>
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
       {data.preview && <ZoneShade />}
       {tasks && panel === "list" && <TaskList tasks={tasks} onOpen={openTask} onClose={() => setPanel(null)} />}
@@ -130,7 +191,21 @@ export function Reader({
           <p className="task-prompt">{openPreviewTask.prompt}</p>
         </aside>
       )}
-      {width > 0 &&
+      {view === "web" && (
+        <WebText
+          data={data}
+          observe={zone.observe}
+          dwellMs={zone.dwellMs}
+          readIds={zone.readIds}
+          markers={markers}
+          onMarker={openTask}
+          selection={selection}
+          selectedSentence={selectedSentence}
+          onSentence={setSelectedSentence}
+        />
+      )}
+      {view === "pdf" &&
+        width > 0 &&
         data.pages.map((size, i) => (
           <Page
             key={i}
@@ -150,6 +225,96 @@ export function Reader({
           />
         ))}
     </div>
+  );
+}
+
+type TextViewProps = {
+  data: ReaderData;
+  observe: (el: HTMLElement | null) => void;
+  dwellMs: Record<string, number>;
+  readIds: Set<string>;
+  markers: Map<string, Marker[]>;
+  onMarker: (taskId: string) => void;
+  selection: SelectionOverlay | null;
+  selectedSentence: number | null;
+  onSentence: (index: number) => void;
+};
+
+// Веб-текст: абзацы свёрстаны заново под ширину экрана. Зона чтения считается
+// по абзацам так же, как по строкам на страницах PDF.
+function WebText({
+  data,
+  observe,
+  dwellMs,
+  readIds,
+  markers,
+  onMarker,
+  selection,
+  selectedSentence,
+  onSentence,
+}: TextViewProps) {
+  const thresholds = useMemo(() => new Map(data.fragments.map((f) => [f.id, f.thresholdMs])), [data.fragments]);
+  return (
+    <article className="web-text" lang={data.language}>
+      {data.blocks.map((b) => {
+        if (b.kind === "HEADING") return <h2 key={b.id}>{b.content}</h2>;
+        const list = markers.get(b.id) ?? [];
+        const picking = selection?.fragmentId === b.id;
+        const classes = ["web-par"];
+        if (data.preview) classes.push("debug");
+        if (data.preview && readIds.has(b.id)) classes.push("read");
+        if (list.length) classes.push("has-task");
+        return (
+          <div key={b.id} ref={observe} data-fid={b.id} className={classes.join(" ")}>
+            <p>
+              {picking
+                ? selection.sentences.map((range, k) => (
+                    <span key={k}>
+                      {/* Не <button>: кнопка в браузерах не бывает строчной и ломает абзац. */}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selectedSentence === k}
+                        className={`sentence-inline${selectedSentence === k ? " picked" : ""}`}
+                        onClick={() => onSentence(k)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSentence(k);
+                          }
+                        }}
+                      >
+                        {b.content.slice(...range)}
+                      </span>{" "}
+                    </span>
+                  ))
+                : b.content}
+            </p>
+            {list.length > 0 && (
+              <div className="web-markers">
+                {list.map((m) => (
+                  <button
+                    key={m.taskId}
+                    type="button"
+                    className={`task-marker inline${m.isNew ? " new" : ""}`}
+                    onClick={() => onMarker(m.taskId)}
+                    aria-label="Открыть задание"
+                    title="Задание"
+                  >
+                    ?
+                  </button>
+                ))}
+              </div>
+            )}
+            {data.preview && (
+              <span className="zone-timer web">
+                {Math.floor((dwellMs[b.id] ?? 0) / 1000)} / {(thresholds.get(b.id) ?? 0) / 1000} с
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </article>
   );
 }
 

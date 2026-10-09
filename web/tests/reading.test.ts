@@ -53,6 +53,17 @@ describe("учёт дочитывания", () => {
     expect((await getReaderData(text.id, teacher.id))?.preview).toBe(true);
   });
 
+  it("веб-текст: абзацы и заголовки без колонтитулов", async () => {
+    const { text, student } = await published();
+    const reader = await getReaderData(text.id, student.id);
+    expect(reader?.displayMode).toBe("PDF");
+    expect(reader?.blocks.map((b) => `${b.kind}:${b.content}`)).toEqual([
+      "HEADING:Введение",
+      "BODY:Первая фраза. Вторая обрывается на",
+      "BODY:Середина кавычки. Конец абзаца.",
+    ]);
+  });
+
   it("засчитывает не больше, чем прошло по часам сервера", async () => {
     const { text, student, a, b } = await published();
     // Первый отчёт только открывает текст.

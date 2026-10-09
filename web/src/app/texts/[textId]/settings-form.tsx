@@ -45,7 +45,7 @@ export function SettingsForm({
         <legend>Режим показа</legend>
         <label>
           <input type="radio" name="displayMode" value="PDF" defaultChecked={displayMode === "PDF"} /> Страницы PDF:
-          оригинальная вёрстка
+          оригинальная вёрстка. На телефоне студент по умолчанию читает текстом и может переключиться на страницы
         </label>
         <label>
           <input type="radio" name="displayMode" value="WEB" defaultChecked={displayMode === "WEB"} /> Веб-текст: текст

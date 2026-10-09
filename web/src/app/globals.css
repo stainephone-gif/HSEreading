@@ -403,6 +403,122 @@ table.summary th {
   overflow-x: auto;
 }
 
+/* Веб-текст */
+
+.view-switch {
+  display: flex;
+  gap: 0;
+  align-self: center;
+}
+
+.view-switch button {
+  border-radius: 0;
+  padding: 6px 14px;
+}
+
+.view-switch button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.view-switch button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.web-text {
+  align-self: stretch;
+  max-width: 680px;
+  margin: 0 auto;
+  font-family: Georgia, "PT Serif", "Times New Roman", serif;
+  font-size: 1.125rem;
+  line-height: 1.65;
+  hyphens: auto;
+  overflow-wrap: break-word;
+}
+
+.web-text h2 {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 1.2rem;
+  line-height: 1.3;
+  margin: 1.6em 0 0.6em;
+}
+
+.web-par,
+.zone-line {
+  /* Место под липкую строку заданий при прокрутке к абзацу. */
+  scroll-margin-top: 72px;
+}
+
+.web-par {
+  position: relative;
+  /* Справа место под маркеры заданий. */
+  padding-right: 36px;
+}
+
+.web-par p {
+  margin: 0 0 1em;
+}
+
+.web-par.debug {
+  outline: 1px dashed rgb(47 93 138 / 0.5);
+  outline-offset: 2px;
+}
+
+.web-par.debug.read {
+  outline-color: rgb(46 125 50 / 0.7);
+}
+
+.web-markers {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-marker.inline {
+  position: static;
+}
+
+.zone-timer.web {
+  right: 36px;
+  transform: translateY(-100%);
+  font-family: system-ui, sans-serif;
+}
+
+.web-par.read .zone-timer.web {
+  background: #2e7d32;
+}
+
+.sentence-inline {
+  padding: 0 1px;
+  border-radius: 2px;
+  -webkit-tap-highlight-color: transparent;
+  background: rgb(47 93 138 / 0.12);
+  cursor: pointer;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sentence-inline:hover {
+  background: rgb(47 93 138 / 0.25);
+}
+
+.sentence-inline.picked {
+  background: rgb(230 160 0 / 0.4);
+}
+
+@media (max-width: 640px) {
+  .web-text {
+    font-size: 1.0625rem;
+  }
+}
+
 /* Задания в читалке */
 
 .task-bar {

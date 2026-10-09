@@ -23,10 +23,17 @@ export type ReaderFragment = {
   thresholdMs: number;
 };
 
+export type ReaderBlock = { id: string; kind: "BODY" | "HEADING"; content: string };
+
 export type ReaderData = {
   textId: string;
   courseId: string;
   title: string;
+  // Режим, выбранный преподавателем. Текст в режиме PDF на телефоне всё равно можно читать текстом.
+  displayMode: "PDF" | "WEB";
+  language: string;
+  // Абзацы и заголовки по порядку: из них собирается веб-текст.
+  blocks: ReaderBlock[];
   pages: { width: number; height: number }[];
   fragments: ReaderFragment[];
   // Преподаватель смотрит предпросмотр: ничего не записывается.
@@ -42,7 +49,9 @@ export type ReaderData = {
 export async function getReaderData(textId: string, userId: string): Promise<ReaderData | null> {
   const text = await db.text.findUnique({
     where: { id: textId },
-    include: { fragments: { where: { kind: FragmentKind.BODY }, orderBy: { position: "asc" } } },
+    include: {
+      fragments: { where: { kind: { in: [FragmentKind.BODY, FragmentKind.HEADING] } }, orderBy: { position: "asc" } },
+    },
   });
   if (!text || text.status !== "READY") return null;
   const membership = await getMembership(text.courseId, userId);
@@ -70,13 +79,18 @@ export async function getReaderData(textId: string, userId: string): Promise<Rea
     textId: text.id,
     courseId: text.courseId,
     title: text.title,
+    displayMode: text.displayMode,
+    language: text.language ?? "ru",
+    blocks: text.fragments.map((f) => ({ id: f.id, kind: f.kind as ReaderBlock["kind"], content: f.content })),
     pages: text.pages as ReaderData["pages"],
-    fragments: text.fragments.map((f) => ({
-      id: f.id,
-      // Смещения строк читалке не нужны.
-      lines: (f.lines as FragmentLine[]).map(({ page, bbox }) => ({ page, bbox })),
-      thresholdMs: thresholdMs(f.wordCount, text.wordsPerMinute),
-    })),
+    fragments: text.fragments
+      .filter((f) => f.kind === FragmentKind.BODY)
+      .map((f) => ({
+        id: f.id,
+        // Смещения строк читалке не нужны.
+        lines: (f.lines as FragmentLine[]).map(({ page, bbox }) => ({ page, bbox })),
+        thresholdMs: thresholdMs(f.wordCount, text.wordsPerMinute),
+      })),
     preview,
     dwellMs: Object.fromEntries(dwells.map((d) => [d.fragmentId, d.ms])),
     readIds: dwells.filter((d) => d.readAt).map((d) => d.fragmentId),
