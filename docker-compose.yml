@@ -1,0 +1,44 @@
+# Локальный запуск всего стека: docker compose up --build
+# Для сервера задайте APP_URL, TEACHER_EMAILS, SMTP_URL и пароль базы через .env.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: polya
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-polya}
+      POSTGRES_DB: polya
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polya"]
+      interval: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./web
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://polya:${POSTGRES_PASSWORD:-polya}@db:5432/polya
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      target: runner
+    environment:
+      DATABASE_URL: postgresql://polya:${POSTGRES_PASSWORD:-polya}@db:5432/polya
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      TEACHER_EMAILS: ${TEACHER_EMAILS:-}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-Поля <no-reply@localhost>}
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
