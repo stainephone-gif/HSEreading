@@ -114,3 +114,49 @@ blockquote.picked {
 .text-page {
   position: relative;
 }
+
+/* Выбор типа задания: вариант с пояснением. */
+.field-caption {
+  padding: 0;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ash-gray);
+}
+
+.kind-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kind-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.kind-option.active {
+  border-color: var(--color-electric-iris);
+  background: rgb(128 82 255 / 0.1);
+}
+
+.kind-option input {
+  margin-top: 4px;
+}
+
+.kind-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+}
+
+.kind-text b {
+  font-weight: 500;
+}

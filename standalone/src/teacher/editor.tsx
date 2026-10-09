@@ -270,6 +270,30 @@ function Settings({
 
 type Kind = TaskInput["kind"];
 
+// Типы заданий: что делает студент и кто проверяет ответ.
+const KINDS: { kind: Kind; title: string; hint: string }[] = [
+  {
+    kind: "page-choice",
+    title: "Выбрать вариант",
+    hint: "Студент выбирает один из 2–6 вариантов. Вы отмечаете верный, проверка автоматическая.",
+  },
+  {
+    kind: "page-selection",
+    title: "Найти предложение на странице",
+    hint: "Студент щёлкает по нужному предложению в тексте. Вы выбираете эталон на странице слева, проверка автоматическая.",
+  },
+  {
+    kind: "page-short",
+    title: "Написать короткий ответ",
+    hint: "Студент пишет до трёх предложений. Проверяете вы в «Результатах».",
+  },
+  {
+    kind: "scattered",
+    title: "Короткий ответ на «своей» странице",
+    hint: "Каждому студенту задание выпадет на случайной странице из диапазона: у соседа место другое. Проверяете вы.",
+  },
+];
+
 const fresh = (): ChoiceOption[] => [
   { text: "", correct: true },
   { text: "", correct: false },
@@ -325,7 +349,11 @@ function TaskForm({
     setSentence(null);
     setOptions(fresh());
     onCreate(task);
-    setDone(`Задание ${project.tasks.length + 1} добавлено к ${describeTask(task)}.`);
+    setDone(
+      task.page !== null
+        ? `Задание ${project.tasks.length + 1} добавлено к стр. ${task.page + 1}. Оно появилось в списке выше и отмечено на странице.`
+        : `Задание ${project.tasks.length + 1} добавлено: ${describeTask(task)}. Оно появилось в списке выше.`,
+    );
   };
 
   return (
@@ -387,21 +415,23 @@ function TaskForm({
       </div>
 
       <div className="stack task-editor-form" style={{ gap: 12 }}>
-        <label className="stack" style={{ gap: 6 }}>
-          <span>Тип</span>
-          <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-            <option value="page-choice">Выбор варианта</option>
-            <option value="page-selection">Выделить предложение</option>
-            <option value="page-short">Короткий ответ</option>
-            <option value="scattered">Раскидать по страницам (короткий ответ)</option>
-          </select>
-        </label>
+        <fieldset className="stack" style={{ gap: 6 }}>
+          <legend className="field-caption">Что сделает студент</legend>
+          <div className="kind-options">
+            {KINDS.map((k) => (
+              <label key={k.kind} className={`kind-option${kind === k.kind ? " active" : ""}`}>
+                <input type="radio" name="kind" checked={kind === k.kind} onChange={() => setKind(k.kind)} />
+                <span className="kind-text">
+                  <b>{k.title}</b>
+                  <span className="muted small">{k.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         {kind === "scattered" ? (
           <div className="stack" style={{ gap: 6 }}>
-            <p className="muted small" style={{ margin: 0 }}>
-              У каждого студента задание окажется на своей странице из диапазона.
-            </p>
             <div className="row">
               <label className="stack" style={{ gap: 6 }}>
                 <span>Со страницы</span>
@@ -524,7 +554,7 @@ function TaskForm({
         </div>
         {done && (
           <p className="added-note" role="status">
-            ✓ {done} Оно появилось в списке выше и отмечено на странице.
+            ✓ {done}
           </p>
         )}
       </div>
