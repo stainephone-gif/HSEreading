@@ -14,6 +14,9 @@ services:
       interval: 5s
       retries: 10
 
+  pdf:
+    build: ./pdf-service
+
   migrate:
     build:
       context: ./web
@@ -34,10 +37,17 @@ services:
       TEACHER_EMAILS: ${TEACHER_EMAILS:-}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-Поля <no-reply@localhost>}
+      PDF_SERVICE_URL: http://pdf:8000
+      STORAGE_DIR: /data
+    volumes:
+      - files:/data
     ports:
       - "3000:3000"
     depends_on:
-      migrate:
+      pdf:
+    build: ./pdf-service
+
+  migrate:
         condition: service_completed_successfully
 
 volumes:
