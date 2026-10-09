@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { env, normalizeEmail, teacherEmails } from "./env";
+import { devLoginLinks, env, normalizeEmail, teacherEmails } from "./env";
 import { sendMail } from "./mail";
 import { generateToken, hashToken, safeNextPath } from "./tokens";
 
@@ -8,7 +8,8 @@ export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // Не больше стольких писем на один адрес за время жизни токена.
 export const LOGIN_RATE_LIMIT = 5;
 
-export type LoginRequestResult = { ok: true } | { ok: false; error: string };
+// devLink — только в тестовом режиме DEV_LOGIN_LINKS.
+export type LoginRequestResult = { ok: true; devLink?: string } | { ok: false; error: string };
 
 export async function requestLoginLink(
   rawEmail: string,
@@ -43,7 +44,7 @@ export async function requestLoginLink(
     "Вход в «Поля»",
     `Чтобы войти, откройте ссылку:\n\n${link}\n\nСсылка действует 15 минут. Если вы не запрашивали вход, просто удалите это письмо.`,
   );
-  return { ok: true };
+  return devLoginLinks() ? { ok: true, devLink: link } : { ok: true };
 }
 
 export type ConsumedLogin = { sessionToken: string; expiresAt: Date; next: string | null };

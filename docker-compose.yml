@@ -45,6 +45,8 @@ services:
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-Поля <no-reply@localhost>}
       APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Moscow}
+      # Только для запуска на своём компьютере: ссылка входа прямо на странице.
+      DEV_LOGIN_LINKS: ${DEV_LOGIN_LINKS:-false}
       PDF_SERVICE_URL: http://pdf:8000
       STORAGE_DIR: /data
     volumes:

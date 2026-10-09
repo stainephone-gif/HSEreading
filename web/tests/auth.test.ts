@@ -72,6 +72,20 @@ describe("вход по ссылке", () => {
     expect((await requestLoginLink("b@example.com")).ok).toBe(false);
   });
 
+  it("тестовый режим отдаёт ссылку сразу, обычный — нет", async () => {
+    captureToken();
+    expect(await requestLoginLink("d@example.com")).toEqual({ ok: true });
+    process.env.DEV_LOGIN_LINKS = "true";
+    try {
+      const res = await requestLoginLink("d@example.com");
+      expect(res.ok && res.devLink).toMatch(/\/auth\/verify\?token=/);
+      const token = decodeURIComponent(new URL((res as { devLink: string }).devLink).searchParams.get("token")!);
+      expect(await consumeLoginToken(token)).not.toBeNull();
+    } finally {
+      delete process.env.DEV_LOGIN_LINKS;
+    }
+  });
+
   it("выход удаляет сессию", async () => {
     const lastToken = captureToken();
     await requestLoginLink("c@example.com");

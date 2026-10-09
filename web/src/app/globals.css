@@ -267,6 +267,26 @@ button:hover:not(:disabled) {
   background: #8f66ff;
 }
 
+/* Ссылка, оформленная как главная кнопка. */
+a.button-link {
+  align-self: flex-start;
+  display: inline-block;
+  font-size: var(--text-nav-label);
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 14px 18px;
+  border-radius: var(--radius-3xl);
+  background: var(--color-electric-iris);
+  color: var(--color-bone-white);
+}
+
+a.button-link:hover {
+  background: #8f66ff;
+  color: var(--color-bone-white);
+}
+
 button.secondary {
   background: transparent;
   border-color: var(--hairline);

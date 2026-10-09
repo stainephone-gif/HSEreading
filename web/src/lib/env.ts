@@ -25,6 +25,12 @@ export function appUrl(path: string): URL {
   return new URL(path, env().APP_URL);
 }
 
+// Тестовый режим: ссылка для входа показывается прямо на странице, письмо не нужно.
+// Кто угодно войдёт под любой почтой, поэтому только для запуска на своём компьютере.
+export function devLoginLinks(): boolean {
+  return process.env.DEV_LOGIN_LINKS === "true";
+}
+
 export function teacherEmails(): Set<string> {
   return new Set(
     env()
