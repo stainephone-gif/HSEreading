@@ -7,8 +7,7 @@ import nacl from "tweetnacl";
 import { shortAnswerError } from "./answer-rules";
 import { creditAllowance, creditFor } from "./dwell-rules";
 import type { FragmentLine, Sentence } from "./pdf-service";
-import type { ReaderBlock, ReaderFragment } from "./reading";
-import type { StudentTask, StudentTasks } from "./tasks";
+import type { ReaderBlock, ReaderFragment, StudentTask, StudentTasks } from "./reader-types";
 
 export const KIOSK_VERSION = 1;
 
@@ -94,6 +93,13 @@ export function placeTasks(data: KioskData, email: string): Record<string, strin
     placements[t.id] = fragmentId;
   }
   return placements;
+}
+
+// Задания, добавленные после того, как студент начал читать (преподаватель
+// разослал новый файл): места для них выбираются так же, по почте.
+export function fillPlacements(state: KioskState, data: KioskData): void {
+  const placements = placeTasks(data, state.student.email);
+  for (const [taskId, fragmentId] of Object.entries(placements)) state.placements[taskId] ??= fragmentId;
 }
 
 export function newState(data: KioskData, student: KioskStudent, now: number): KioskState {

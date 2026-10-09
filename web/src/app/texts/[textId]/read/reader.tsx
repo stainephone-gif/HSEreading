@@ -5,8 +5,7 @@ import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask, TextLayer } 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { sentenceRects } from "@/lib/geometry";
 import type { Sentence } from "@/lib/pdf-service";
-import type { ReaderData } from "@/lib/reading";
-import type { StudentTasks } from "@/lib/tasks";
+import type { ReaderData, StudentTasks } from "@/lib/reader-types";
 import { TaskBar, TaskList, TaskPanel } from "./task-panel";
 
 // Зона чтения: средняя полоса экрана, по 20% высоты сверху и снизу не считаются.

@@ -116,7 +116,7 @@ function StartScreen({ store, onStart }: { store: KioskStore; onStart: (s: Kiosk
             <input type="text" name="name" required autoComplete="name" />
           </label>
           <label className="stack" style={{ gap: 6 }}>
-            <span>Почта, как в курсе</span>
+            <span>Почта: по ней преподаватель узнает ваш отчёт</span>
             <input type="email" name="email" required autoComplete="email" />
           </label>
           {error && <p className="error">{error}</p>}

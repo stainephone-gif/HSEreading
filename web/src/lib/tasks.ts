@@ -238,27 +238,8 @@ export async function ensurePlacements(textId: string, userId: string): Promise<
   await db.taskPlacement.createMany({ data: rows, skipDuplicates: true });
 }
 
-export type StudentTask = {
-  id: string;
-  fragmentId: string;
-  format: AnswerFormat;
-  prompt: string;
-  options: string[] | null;
-  // Для ответа выделением: текст абзаца, его строки и предложения.
-  selection: { content: string; lines: FragmentLine[]; sentences: Sentence[] } | null;
-  answer: { choice?: number; range?: Sentence; text?: string } | null;
-  // Результат виден только после дедлайна.
-  grade: Grade | null;
-};
-
-export type StudentTasks = {
-  total: number;
-  found: StudentTask[];
-  deadline: Date | null;
-  closed: boolean;
-  // Офлайн-читалка: ответы проверяются после загрузки отчёта, оценок в ней нет.
-  gradesPending?: boolean;
-};
+export type { StudentTask, StudentTasks } from "./reader-types";
+import type { StudentTask, StudentTasks } from "./reader-types";
 
 // Найденные студентом задания: те, чей абзац у него уже дочитан. О ненайденных
 // студент знает только их число.

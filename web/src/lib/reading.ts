@@ -3,41 +3,17 @@ import { getMembership, requireCourseTeacher } from "./courses";
 import { db } from "./db";
 import { creditAllowance, creditFor, thresholdMs } from "./dwell-rules";
 import type { FragmentLine } from "./pdf-service";
-import { ensurePlacements, getStudentTasks, type StudentTasks } from "./tasks";
+import type { StudentTasks } from "./reader-types";
+import { ensurePlacements, getStudentTasks } from "./tasks";
 
 // Сервер засчитывает не больше времени, чем прошло по его часам (dwell-rules.ts).
 const MAX_CLAIMS = 200;
 
 export { BEAT_INTERVAL_MS, MAX_CREDIT_MS, thresholdMs } from "./dwell-rules";
 
-export type ReaderFragment = {
-  id: string;
-  lines: Pick<FragmentLine, "page" | "bbox">[];
-  thresholdMs: number;
-};
+import type { ReaderBlock, ReaderData } from "./reader-types";
 
-export type ReaderBlock = { id: string; kind: "BODY" | "HEADING"; content: string };
-
-export type ReaderData = {
-  textId: string;
-  courseId: string;
-  title: string;
-  // Режим, выбранный преподавателем. Текст в режиме PDF на телефоне всё равно можно читать текстом.
-  displayMode: "PDF" | "WEB";
-  language: string;
-  // Абзацы и заголовки по порядку: из них собирается веб-текст.
-  blocks: ReaderBlock[];
-  pages: { width: number; height: number }[];
-  fragments: ReaderFragment[];
-  // Преподаватель смотрит предпросмотр: ничего не записывается.
-  preview: boolean;
-  dwellMs: Record<string, number>;
-  readIds: string[];
-  // Студенту: найденные задания и их общее число.
-  tasks: StudentTasks | null;
-  // Предпросмотр: задания с привязкой к абзацу, маркер появляется по мере чтения.
-  previewTasks: { id: string; fragmentId: string; prompt: string }[];
-};
+export type { ReaderBlock, ReaderData, ReaderFragment } from "./reader-types";
 
 export async function getReaderData(textId: string, userId: string): Promise<ReaderData | null> {
   const text = await db.text.findUnique({
