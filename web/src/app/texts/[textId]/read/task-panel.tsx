@@ -12,10 +12,13 @@ const FORMAT_HINT = {
 
 export function TaskBar({
   tasks,
+  unanswered = 0,
   deadlineLabel,
   onOpenList,
 }: {
   tasks: StudentTasks;
+  // Открытые задания без ответа.
+  unanswered?: number;
   deadlineLabel: string | null;
   onOpenList: () => void;
 }) {
@@ -24,6 +27,11 @@ export function TaskBar({
       <button type="button" className="link" onClick={onOpenList} disabled={tasks.found.length === 0}>
         Найдено заданий: {tasks.found.length} из {tasks.total}
       </button>
+      {unanswered > 0 && (
+        <button type="button" className="task-bar-attention" onClick={onOpenList}>
+          Без ответа: {unanswered}
+        </button>
+      )}
       {deadlineLabel && <span className="muted small">{deadlineLabel}</span>}
       {tasks.closed && tasks.total > 0 && !tasks.gradesPending && (
         <span className="small">
@@ -59,7 +67,11 @@ export function TaskList({
             <button type="button" className="link" onClick={() => onOpen(t.id)}>
               {t.prompt.length > 80 ? `${t.prompt.slice(0, 80)}…` : t.prompt}
             </button>{" "}
-            <span className="muted small">{t.answer ? "· ответ сохранён" : "· без ответа"}</span>
+            {t.answer ? (
+              <span className="muted small">· ответ сохранён</span>
+            ) : (
+              <span className="small attention-text">· без ответа</span>
+            )}
           </li>
         ))}
       </ol>

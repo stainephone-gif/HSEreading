@@ -28,7 +28,79 @@ export type ReaderBackend = {
   submit: (taskId: string, value: unknown) => Promise<{ error?: string; tasks?: StudentTasks }>;
 };
 
-type Marker = { taskId: string; isNew: boolean };
+// Маркер задания: новое (ещё не открыто), открытое без ответа, с ответом.
+type MarkerState = "new" | "open" | "done";
+type Marker = { taskId: string; state: MarkerState };
+
+const MARKER: Record<MarkerState, { mark: string; label: string; title: string }> = {
+  new: { mark: "?", label: "Задание", title: "Здесь спрятано задание" },
+  open: { mark: "!", label: "Ответить", title: "Задание открыто, но ответа нет" },
+  done: { mark: "✓", label: "Ответ есть", title: "Ответ сохранён" },
+};
+
+function MarkerButton({
+  marker,
+  inline,
+  onClick,
+  style,
+}: {
+  marker: Marker;
+  inline?: boolean;
+  onClick: () => void;
+  style?: React.CSSProperties;
+}) {
+  const m = MARKER[marker.state];
+  return (
+    <button
+      type="button"
+      className={`task-marker ${marker.state}${inline ? " inline" : ""}`}
+      style={style}
+      onClick={onClick}
+      aria-label={`${m.title}: открыть`}
+      title={m.title}
+    >
+      <span aria-hidden>{m.mark}</span>
+      {!inline && <span className="task-marker-label">{m.label}</span>}
+    </button>
+  );
+}
+
+// Задание открыто, ответа нет, а студент пролистал его: какое из таких
+// заданий осталось выше экрана (первое по порядку) — о нём напомнить.
+function useLeftBehind(pending: { id: string; fragmentId: string }[], skip: Set<string>): string | null {
+  const [away, setAway] = useState<string | null>(null);
+  const key = pending.map((t) => `${t.id}:${t.fragmentId}`).join(",") + "|" + [...skip].join(",");
+  useEffect(() => {
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      let found: string | null = null;
+      for (const t of pending) {
+        if (skip.has(t.id)) continue;
+        const els = document.querySelectorAll(`[data-fid="${CSS.escape(t.fragmentId)}"]`);
+        if (els.length && els[els.length - 1].getBoundingClientRect().bottom < 0) {
+          found = t.id;
+          break;
+        }
+      }
+      setAway(found);
+    };
+    const onScroll = () => {
+      frame ||= requestAnimationFrame(check);
+    };
+    check();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+    // pending и skip сведены в key: эффект перезапускается только при их изменении.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return away;
+}
 type SelectionOverlay = {
   fragmentId: string;
   sentences: Sentence[];
@@ -93,20 +165,43 @@ export function Reader({
     }
   };
 
+  // Напоминания, которые студент отложил кнопкой «Позже».
+  const [snoozed, setSnoozed] = useState<Set<string>>(() => new Set());
+
   const openTask = useCallback((id: string) => {
     setPanel(id);
     setSelectedSentence(null);
     setSeen((prev) => (prev.has(id) ? prev : new Set([...prev, id])));
+    setSnoozed((prev) => (prev.has(id) ? new Set([...prev].filter((x) => x !== id)) : prev));
   }, []);
 
   const markers = useMemo(() => {
     const map = new Map<string, Marker[]>();
-    const add = (fragmentId: string, taskId: string) =>
-      map.set(fragmentId, [...(map.get(fragmentId) ?? []), { taskId, isNew: !seen.has(taskId) }]);
-    if (tasks) tasks.found.forEach((t) => add(t.fragmentId, t.id));
-    else data.previewTasks.filter((t) => zone.readIds.has(t.fragmentId)).forEach((t) => add(t.fragmentId, t.id));
+    const add = (fragmentId: string, taskId: string, state: MarkerState) =>
+      map.set(fragmentId, [...(map.get(fragmentId) ?? []), { taskId, state }]);
+    if (tasks) {
+      tasks.found.forEach((t) =>
+        add(t.fragmentId, t.id, !seen.has(t.id) ? "new" : t.answer || tasks.closed ? "done" : "open"),
+      );
+    } else {
+      data.previewTasks
+        .filter((t) => zone.readIds.has(t.fragmentId))
+        .forEach((t) => add(t.fragmentId, t.id, seen.has(t.id) ? "done" : "new"));
+    }
     return map;
   }, [tasks, data.previewTasks, zone.readIds, seen]);
+
+  // Открытые задания без ответа: о пролистанном напоминаем внизу экрана.
+  const unanswered = useMemo(
+    () => (tasks && !tasks.closed ? tasks.found.filter((t) => seen.has(t.id) && !t.answer) : []),
+    [tasks, seen],
+  );
+  const skipReminder = useMemo(
+    () => new Set([...snoozed, ...(panel && panel !== "list" ? [panel] : [])]),
+    [snoozed, panel],
+  );
+  const leftBehindId = useLeftBehind(unanswered, skipReminder);
+  const leftBehind = panel === "list" ? null : (unanswered.find((t) => t.id === leftBehindId) ?? null);
 
   const openStudentTask = tasks?.found.find((t) => t.id === panel) ?? null;
 
@@ -164,7 +259,43 @@ export function Reader({
 
   return (
     <div ref={containerRef} className="reader">
-      {tasks && <TaskBar tasks={tasks} deadlineLabel={deadlineLabel} onOpenList={() => setPanel("list")} />}
+      {tasks && (
+        <TaskBar
+          tasks={tasks}
+          unanswered={unanswered.length}
+          deadlineLabel={deadlineLabel}
+          onOpenList={() => setPanel("list")}
+        />
+      )}
+      {leftBehind && (
+        <div className="task-reminder" role="status">
+          <span className="task-reminder-text">
+            <b>Задание без ответа</b> осталось выше: «
+            {leftBehind.prompt.length > 70 ? `${leftBehind.prompt.slice(0, 70)}…` : leftBehind.prompt}»
+          </span>
+          <span className="row" style={{ gap: 8 }}>
+            <button
+              type="button"
+              className="small"
+              onClick={() => {
+                document
+                  .querySelector(`[data-fid="${CSS.escape(leftBehind.fragmentId)}"]`)
+                  ?.scrollIntoView({ block: "center", behavior: "smooth" });
+                openTask(leftBehind.id);
+              }}
+            >
+              Вернуться к заданию
+            </button>
+            <button
+              type="button"
+              className="link small"
+              onClick={() => setSnoozed((prev) => new Set([...prev, leftBehind.id]))}
+            >
+              Позже
+            </button>
+          </span>
+        </div>
+      )}
       {data.displayMode === "PDF" && view && (
         <div className="view-switch" role="group" aria-label="Вид текста">
           <button type="button" className={view === "web" ? undefined : "secondary"} onClick={() => chooseView("web")}>
@@ -308,16 +439,7 @@ function WebText({
             {list.length > 0 && (
               <div className="web-markers">
                 {list.map((m) => (
-                  <button
-                    key={m.taskId}
-                    type="button"
-                    className={`task-marker inline${m.isNew ? " new" : ""}`}
-                    onClick={() => onMarker(m.taskId)}
-                    aria-label="Открыть задание"
-                    title="Задание"
-                  >
-                    ?
-                  </button>
+                  <MarkerButton key={m.taskId} marker={m} inline onClick={() => onMarker(m.taskId)} />
                 ))}
               </div>
             )}
@@ -449,18 +571,14 @@ function Page({
         const list = markers.get(f.id);
         const anchor = f.lines[0];
         if (!list || anchor.page !== index) return null;
+        // Плашки у верхнего края абзаца (страницы), друг под другом.
         return list.map((m, k) => (
-          <button
+          <MarkerButton
             key={m.taskId}
-            type="button"
-            className={`task-marker${m.isNew ? " new" : ""}`}
-            style={{ top: anchor.bbox[1] * scale - 4, right: 4 + k * 30 }}
+            marker={m}
+            style={{ top: Math.max(8, anchor.bbox[1] * scale - 6) + k * 40, right: 8 }}
             onClick={() => onMarker(m.taskId)}
-            aria-label="Открыть задание"
-            title="Задание"
-          >
-            ?
-          </button>
+          />
         ));
       })}
       {selection?.rects.flatMap(({ index: sentence, rects }) =>

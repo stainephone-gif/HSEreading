@@ -789,31 +789,155 @@ table.summary th.num {
   opacity: 1;
 }
 
+/* Маркер задания. Янтарный — цвет «искр» дизайн-системы: его видно и на белой
+   странице PDF, и на чёрном фоне текста. Пока задание не открыто, маркер пульсирует. */
 .task-marker {
   position: absolute;
   z-index: 3;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 50%;
-  font-size: 14px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px 0 6px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-saffron-spark);
+  color: #000;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1;
-  text-transform: none;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.35);
+}
+
+.task-marker > span:first-child {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #000;
+  color: var(--color-saffron-spark);
+  font-size: 13px;
+}
+
+.task-marker:hover:not(:disabled) {
+  background: #ffc94d;
+}
+
+.task-marker.inline {
+  position: static;
+  width: 32px;
+  padding: 0;
+  justify-content: center;
 }
 
 .task-marker.new {
-  animation: marker-pulse 1.2s ease-in-out 4;
+  animation: marker-ring 1.6s ease-out infinite;
 }
 
-@keyframes marker-pulse {
-  50% {
-    transform: scale(1.25);
+/* Открыто без ответа: тот же цвет, кольцо пульсирует медленнее. */
+.task-marker.open {
+  animation: marker-ring 2.4s ease-out infinite;
+}
+
+/* Ответ есть: маркер спокойный. */
+.task-marker.done {
+  background: var(--color-deep-verdant);
+  color: #fff;
+  box-shadow: none;
+}
+
+.task-marker.done:hover:not(:disabled) {
+  background: #1a9a80;
+}
+
+.task-marker.done > span:first-child {
+  background: rgb(255 255 255 / 0.2);
+  color: #fff;
+}
+
+@keyframes marker-ring {
+  0% {
+    box-shadow:
+      0 2px 10px rgb(0 0 0 / 0.35),
+      0 0 0 0 rgb(255 184 41 / 0.7);
+  }
+  70% {
+    box-shadow:
+      0 2px 10px rgb(0 0 0 / 0.35),
+      0 0 0 14px rgb(255 184 41 / 0);
+  }
+  100% {
+    box-shadow:
+      0 2px 10px rgb(0 0 0 / 0.35),
+      0 0 0 0 rgb(255 184 41 / 0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .task-marker.new {
+  .task-marker.new,
+  .task-marker.open {
+    animation: none;
+    outline: 3px solid rgb(255 184 41 / 0.6);
+    outline-offset: 2px;
+  }
+}
+
+.task-bar-attention {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--color-saffron-spark);
+  color: #000;
+  font-size: var(--text-caption);
+}
+
+.task-bar-attention:hover:not(:disabled) {
+  background: #ffc94d;
+}
+
+.attention-text {
+  color: var(--color-saffron-spark);
+}
+
+/* Напоминание о пролистанном задании без ответа. */
+.task-reminder {
+  position: fixed;
+  z-index: 9;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 16px));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--color-void);
+  border: 1px solid var(--color-saffron-spark);
+  border-radius: var(--radius-3xl);
+  box-shadow: 0 6px 30px rgb(0 0 0 / 0.6);
+  animation: reminder-in 0.25s ease-out;
+}
+
+.task-reminder-text {
+  flex: 1 1 260px;
+  font-size: 15px;
+}
+
+.task-reminder-text b {
+  color: var(--color-saffron-spark);
+}
+
+@keyframes reminder-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-reminder {
     animation: none;
   }
 }
