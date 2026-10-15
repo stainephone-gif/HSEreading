@@ -1,6 +1,7 @@
 // Собирает конструктор в один HTML-файл: скрипт и стили внутри. Конструктор
 // копирует их из себя же в файлы читалок, поэтому у тегов есть id.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { BOOT_GUARD } from "../src/boot-guard.js";
 
 const js = readFileSync("build/app.js", "utf8").replace(/<\/(script)/gi, "<\\/$1");
 const css = readFileSync("build/app.css", "utf8").replace(/<\/(style)/gi, "<\\/$1");
@@ -13,7 +14,8 @@ const html = `<!doctype html>
 <style id="polya-style">${css}</style>
 </head>
 <body>
-<div id="root"><p style="padding:24px">Конструктор загружается… Если это сообщение не исчезает, откройте файл в Chrome, Firefox, Edge или Safari.</p></div>
+<div id="root"><p id="polya-loading" style="padding:24px">Конструктор загружается… Если это сообщение не исчезает, откройте файл в Chrome, Firefox, Edge или Safari.</p></div>
+<script>${BOOT_GUARD}</script>
 <script id="polya-app">${js}</script>
 </body>
 </html>

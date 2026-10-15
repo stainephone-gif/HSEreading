@@ -158,7 +158,7 @@ describe("проект", () => {
     expect(Object.keys(data.selections)).toEqual(["p3"]);
 
     const html = renderStudentHtml({ data, pdf: PDF, js: 'x("</script>")', css: "a{}" });
-    expect(html.match(/<\/script>/g)).toHaveLength(3);
+    expect(html.match(/<\/script>/g)).toHaveLength(4);
     expect(html).toContain('id="polya-app"');
     expect(studentFileName("Война и мир")).toBe("polya-chitalka-voina-i-mir.html");
 

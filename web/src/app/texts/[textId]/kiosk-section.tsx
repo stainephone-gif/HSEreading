@@ -40,7 +40,7 @@ export function KioskImport({ textId }: { textId: string }) {
           upload(e.currentTarget);
         }}
       >
-        <input type="file" name="files" accept=".polya,text/plain" multiple required />
+        <input type="file" name="files" multiple required />
         <button type="submit" className="secondary" disabled={pending}>
           {pending ? "Загружаю…" : "Загрузить отчёты"}
         </button>

@@ -10,6 +10,7 @@ import type { Sentence } from "@/lib/pdf-service";
 import type { ReaderBlock } from "@/lib/reader-types";
 import { latinSlug } from "@/kiosk/session";
 import type { PageText } from "./pages";
+import { BOOT_GUARD } from "./boot-guard.js";
 
 export const KEY_KIND = "polya-key";
 export const KEY_VERSION = 1;
@@ -228,9 +229,10 @@ export function renderStudentHtml(params: { data: KioskData; pdf: Uint8Array; js
 <style id="polya-style">${params.css.replace(/<\/(style)/gi, "<\\/$1")}</style>
 </head>
 <body>
-<div id="root"><p style="padding:24px">Читалка загружается… Если это сообщение не исчезает, откройте файл в Chrome, Firefox, Edge или Safari.</p></div>
+<div id="root"><p id="polya-loading" style="padding:24px">Читалка загружается… Если это сообщение не исчезает, откройте файл в Chrome, Firefox, Edge или Safari.</p></div>
 <script type="application/json" id="polya-data">${json}</script>
 <script type="application/octet-stream" id="polya-pdf">${toBase64(params.pdf)}</script>
+<script>${BOOT_GUARD}</script>
 <script id="polya-app">${params.js.replace(/<\/(script)/gi, "<\\/$1")}</script>
 </body>
 </html>

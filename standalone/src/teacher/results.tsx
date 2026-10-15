@@ -74,9 +74,9 @@ export function Results({ project }: { project: Project }) {
           Выберите файлы отчётов, которые прислали студенты (.polya). Можно все сразу и можно добавлять ещё. Если от
           студента несколько отчётов, засчитывается лучшее чтение и последние ответы.
         </p>
+        {/* Без accept: Safari не даёт выбрать файлы с незнакомым ему расширением .polya. */}
         <input
           type="file"
-          accept=".polya,text/plain"
           multiple
           onChange={(e) => e.target.files && addFiles(e.target.files)}
         />

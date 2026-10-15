@@ -9,7 +9,7 @@ import { normalizeStudent } from "@/lib/kiosk-engine";
 import { type KioskSession, type KioskStore, reportFileName } from "./session";
 
 function download(name: string, content: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+  const url = URL.createObjectURL(new Blob([content], { type: "application/octet-stream" }));
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
@@ -63,7 +63,6 @@ function RestoreButton({
       <input
         ref={input}
         type="file"
-        accept=".polya,text/plain"
         hidden
         onChange={async (e) => {
           const file = e.target.files?.[0];
